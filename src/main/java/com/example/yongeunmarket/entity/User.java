@@ -31,6 +31,7 @@ public class User {
 	@Enumerated(EnumType.STRING)
 	private UserRole role = UserRole.BUYER;
 
+
 	public User(String email, String password) {
 		this.email = email;
 		this.password = password;
