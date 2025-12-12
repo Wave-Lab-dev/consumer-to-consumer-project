@@ -29,14 +29,11 @@ public class User {
 	private String password;
 
 	@Enumerated(EnumType.STRING)
-	private UserRole role = UserRole.BUYER;
+	private UserRole role;
 
-	public User(String email, String password) {
+	public User(String email, String password, UserRole role) {
 		this.email = email;
 		this.password = password;
-	}
-
-	public enum UserRole {
-		ADMIN, BUYER, SELLER
+		this.role = role;
 	}
 }
