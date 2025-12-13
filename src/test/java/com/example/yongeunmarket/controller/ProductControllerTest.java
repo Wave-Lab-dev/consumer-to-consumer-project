@@ -1,5 +1,6 @@
 package com.example.yongeunmarket.controller;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
@@ -17,13 +18,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.example.yongeunmarket.dto.product.CreateProductReqDto;
 import com.example.yongeunmarket.dto.product.CreateProductResDto;
+import com.example.yongeunmarket.dto.product.GetProductResDto;
 import com.example.yongeunmarket.entity.Product;
 import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.service.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @WebMvcTest(controllers = ProductController.class) //controller 레이어만 컨테이너에 추가
-//@Import(SecurityConfig.class)
+	//@Import(SecurityConfig.class)
 class ProductControllerTest {
 
 	@Autowired
@@ -86,4 +88,73 @@ class ProductControllerTest {
 			.andExpect(jsonPath("$.price").value(10000))
 			.andExpect(jsonPath("$.description").value("testDescription"));
 	}
+
+	@Test
+	void givenProducts_whenFindAll_thenReturnGetProductResList() throws Exception {
+		GetProductResDto resDto1 = GetProductResDto.builder()
+			.productId(1L)
+			.userId(1L)
+			.name("testName1")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription1")
+			.createdAt(null)
+			.build();
+
+		GetProductResDto resDto2 = GetProductResDto.builder()
+			.productId(2L)
+			.userId(1L)
+			.name("testName2")
+			.price(BigDecimal.valueOf(20000))
+			.description("testDescription2")
+			.createdAt(null)
+			.build();
+
+		given(productService.findAll()).willReturn(java.util.List.of(resDto1, resDto2));
+
+		// when & then
+		mockMvc.perform(get("/api/products"))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$", hasSize(2)))
+			.andExpect(jsonPath("$[0].productId").value(1L))
+			.andExpect(jsonPath("$[0].userId").value(1L))
+			.andExpect(jsonPath("$[0].name").value("testName1"))
+			.andExpect(jsonPath("$[0].price").value(10000))
+			.andExpect(jsonPath("$[0].description").value("testDescription1"))
+
+			.andExpect(jsonPath("$[1].productId").value(2L))
+			.andExpect(jsonPath("$[1].userId").value(1L))
+			.andExpect(jsonPath("$[1].name").value("testName2"))
+			.andExpect(jsonPath("$[1].price").value(20000))
+			.andExpect(jsonPath("$[1].description").value("testDescription2"));
+	}
+
+	@Test
+	void givenProduct_whenFindById_thenReturnGetProductRes() throws Exception {
+		//given
+		long productId = 1L;
+
+		GetProductResDto resDto = GetProductResDto.builder()
+			.productId(productId)
+			.userId(1L)
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.createdAt(null)
+			.build();
+
+		given(productService.findById(productId)).willReturn(resDto);
+
+		// when & then
+		mockMvc.perform(get("/api/products/{productId}", productId))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.productId").value(1L))
+			.andExpect(jsonPath("$.userId").value(1L))
+			.andExpect(jsonPath("$.name").value("testName"))
+			.andExpect(jsonPath("$.price").value(10000))
+			.andExpect(jsonPath("$.description").value("testDescription"));
+	}
+
+
 }
