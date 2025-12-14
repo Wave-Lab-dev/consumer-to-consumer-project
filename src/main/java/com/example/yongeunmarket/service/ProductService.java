@@ -106,6 +106,18 @@ public class ProductService {
 			.build();
 	}
 
+	@Transactional
+	public void deleteProduct(Long productId, Long userId) {
+
+		Product product = getProductOrThrow(productId);
+		// 상품이 현재 로그인한 user 가 만든 product 인지 검증
+		if (!userId.equals(product.getUser().getId())) {
+			throw new IllegalStateException("해당 user 에 권한이 없습니다");    //403
+		}
+
+		productRepository.delete(product);
+	}
+
 	private User getUserOrThrow(Long userId) {
 		return userRepository.findById(userId).orElseThrow(
 			() -> new EntityNotFoundException("user 가 존재하지 않음"));
