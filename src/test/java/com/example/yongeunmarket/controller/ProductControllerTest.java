@@ -19,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.example.yongeunmarket.dto.product.CreateProductReqDto;
 import com.example.yongeunmarket.dto.product.CreateProductResDto;
 import com.example.yongeunmarket.dto.product.GetProductResDto;
+import com.example.yongeunmarket.dto.product.UpdateProductReqDto;
+import com.example.yongeunmarket.dto.product.UpdateProductResDto;
 import com.example.yongeunmarket.entity.Product;
 import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.service.ProductService;
@@ -58,6 +60,7 @@ class ProductControllerTest {
 			.password("1234")
 			.build();
 		ReflectionTestUtils.setField(user, "id", 1L);
+
 		Product product = Product.builder()
 			.user(user)
 			.name("testName")
@@ -65,6 +68,7 @@ class ProductControllerTest {
 			.description("testDescription")
 			.build();
 		ReflectionTestUtils.setField(product, "id", 1L);
+
 		CreateProductResDto resDto = CreateProductResDto.builder()
 			.productId(product.getId())
 			.userId(user.getId())
@@ -156,5 +160,51 @@ class ProductControllerTest {
 			.andExpect(jsonPath("$.description").value("testDescription"));
 	}
 
+	@Test
+	void givenUpdateProductReq_whenFindAll_thenReturnUpdateProductRes() throws Exception {
 
+		//given
+		UpdateProductReqDto reqDto = UpdateProductReqDto.builder()
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
+
+		User user = User.builder()
+			.email("test@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user, "id", 1L);
+
+		Product product = Product.builder()
+			.user(user)
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
+		ReflectionTestUtils.setField(product, "id", 1L);
+
+		UpdateProductResDto resDto = UpdateProductResDto.builder()
+			.productId(product.getId())
+			.userId(user.getId())
+			.name("testName")
+			.price(product.getPrice())
+			.description("testDescription")
+			.createdAt(product.getCreatedAt())
+			.build();
+
+		given(productService.updateProduct(any(UpdateProductReqDto.class), anyLong(), anyLong())).willReturn(resDto);
+
+		// when & then
+		mockMvc.perform(patch("/api/products/{productId}", product.getId())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(reqDto)))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.productId").value(1L))
+			.andExpect(jsonPath("$.userId").value(1L))
+			.andExpect(jsonPath("$.name").value("testName"))
+			.andExpect(jsonPath("$.price").value(10000))
+			.andExpect(jsonPath("$.description").value("testDescription"));
+	}
 }

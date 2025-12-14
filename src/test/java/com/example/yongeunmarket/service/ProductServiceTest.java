@@ -17,6 +17,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.example.yongeunmarket.dto.product.CreateProductReqDto;
 import com.example.yongeunmarket.dto.product.CreateProductResDto;
 import com.example.yongeunmarket.dto.product.GetProductResDto;
+import com.example.yongeunmarket.dto.product.UpdateProductReqDto;
+import com.example.yongeunmarket.dto.product.UpdateProductResDto;
 import com.example.yongeunmarket.entity.Product;
 import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.repository.ProductRepository;
@@ -155,4 +157,44 @@ class ProductServiceTest {
 		assertThat(resDto.getDescription()).isEqualTo(product.getDescription());
 
 	}
+
+	/**
+	 * 상품 업데이트 단위 테스트
+	 */
+	@Test
+	void givenUpdateProductReq_whenFindAll_thenReturnUpdateProductRes() {
+
+		UpdateProductReqDto reqDto = UpdateProductReqDto.builder()
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
+
+		User user = User.builder()
+			.email("test@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user, "id", 1L);
+
+		Product product = Product.builder()
+			.user(user)
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
+		ReflectionTestUtils.setField(product, "id", 1L);
+
+		given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
+
+		// when
+		UpdateProductResDto resDto = productService.updateProduct(reqDto, product.getId(), user.getId());
+
+		//then
+		verify(productRepository).findById(anyLong());    // productRepository 의존성 사용
+		assertThat(resDto.getUserId()).isEqualTo(user.getId());
+		assertThat(resDto.getName()).isEqualTo(reqDto.getName());
+		assertThat(resDto.getPrice()).isEqualTo(reqDto.getPrice());
+		assertThat(resDto.getDescription()).isEqualTo(reqDto.getDescription());
+	}
+
 }
