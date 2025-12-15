@@ -207,4 +207,19 @@ class ProductControllerTest {
 			.andExpect(jsonPath("$.price").value(10000))
 			.andExpect(jsonPath("$.description").value("testDescription"));
 	}
+
+    @Test
+    void givenProduct_whenDeleteProduct_thenReturnNoContent() throws Exception {
+        // given
+        long productId = 1L;
+
+        willDoNothing().given(productService).deleteProduct(anyLong(), anyLong());
+
+        // when & then
+        mockMvc.perform(delete("/api/products/{productId}", productId))
+                .andDo(print())
+                .andExpect(status().isNoContent());
+
+    }
+
 }
