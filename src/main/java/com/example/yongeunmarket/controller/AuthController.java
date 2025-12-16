@@ -10,6 +10,7 @@ import com.example.yongeunmarket.dto.auth.LoginReqDto;
 import com.example.yongeunmarket.dto.auth.LoginResDto;
 import com.example.yongeunmarket.service.AuthService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -20,7 +21,7 @@ public class AuthController {
 	private final AuthService authService;
 
 	@PostMapping("/login")
-	public ResponseEntity<LoginResDto> login(@RequestBody LoginReqDto loginReqDto) {
+	public ResponseEntity<LoginResDto> login(@Valid @RequestBody LoginReqDto loginReqDto) {
 
 		LoginResDto loginResDto = authService.login(loginReqDto);
 		return ResponseEntity.ok(loginResDto);
