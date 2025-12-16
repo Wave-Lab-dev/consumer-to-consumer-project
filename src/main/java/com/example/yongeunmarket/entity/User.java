@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -19,8 +20,7 @@ public class User {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "user_id")
-	private Long userId;
+	private Long id;
 
 	@Column(name = "email", nullable = false, unique = true)
 	private String email;
@@ -31,7 +31,7 @@ public class User {
 	@Enumerated(EnumType.STRING)
 	private UserRole role = UserRole.BUYER;
 
-
+	@Builder
 	public User(String email, String password) {
 		this.email = email;
 		this.password = password;
