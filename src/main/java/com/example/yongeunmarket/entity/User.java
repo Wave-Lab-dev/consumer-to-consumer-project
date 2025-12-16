@@ -28,13 +28,20 @@ public class User {
 	@Column(name = "password", nullable = false)
 	private String password;
 
+	private String imageUrl;
+
 	@Enumerated(EnumType.STRING)
 	private UserRole role = UserRole.BUYER;
 
 	@Builder
-	public User(String email, String password) {
+	public User(String email, String password, String imageUrl) {
 		this.email = email;
 		this.password = password;
+		this.imageUrl = imageUrl;
+	}
+
+	public void updateImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
 	}
 
 	public enum UserRole {
