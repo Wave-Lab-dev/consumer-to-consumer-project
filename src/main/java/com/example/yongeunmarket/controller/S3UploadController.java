@@ -1,7 +1,5 @@
 package com.example.yongeunmarket.controller;
 
-import java.io.IOException;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,7 +22,7 @@ public class S3UploadController {
 
 	@PostMapping("/{userId}/upload")
 	public ResponseEntity<Void> uploadFile(@RequestPart("multipartFile") MultipartFile multipartFile,
-		@PathVariable Long userId) throws IOException {
+		@PathVariable Long userId) {
 		//@AuthenticationPrincipal CustomUserDetails
 		Long currentUserId = 1L; // userDetails.getUsername() 인증 인가 미구현으로 인한 하드코딩
 		s3UploadService.saveFile(multipartFile, userId, currentUserId);

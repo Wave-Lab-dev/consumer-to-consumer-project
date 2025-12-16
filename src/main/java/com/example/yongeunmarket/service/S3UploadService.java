@@ -1,6 +1,7 @@
 package com.example.yongeunmarket.service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +34,7 @@ public class S3UploadService {
 	private String bucket;
 
 	@Transactional
-	public String saveFile(MultipartFile multipartFile, Long requestedUserId, Long currentUserId) throws IOException {
+	public void saveFile(MultipartFile multipartFile, Long requestedUserId, Long currentUserId) {    //예외 바꾸기
 		// 권한 체크
 		User user = getUserOrThrow(requestedUserId);
 
@@ -43,7 +44,7 @@ public class S3UploadService {
 
 		if (multipartFile.isEmpty() || multipartFile.getOriginalFilename() == null) {
 			throw new IllegalArgumentException("Image file is empty or invalid"); //404
-		} //이렇게 쓰는거 어떻게 생각하시나요?
+		}
 
 		if (StringUtils.hasText(user.getImageUrl())) {
 			deleteImage(user.getImageUrl());
@@ -52,16 +53,19 @@ public class S3UploadService {
 		String originalFilename = multipartFile.getOriginalFilename();
 
 		String extension = getExtension(originalFilename);
-		String key = "images/" + UUID.randomUUID() + extension;
+		String key = "images/" + UUID.randomUUID() + "." + extension;
 
 		ObjectMetadata metadata = new ObjectMetadata();
 		metadata.setContentLength(multipartFile.getSize());
 		metadata.setContentType(multipartFile.getContentType());
 
-		amazonS3.putObject(bucket, key, multipartFile.getInputStream(), metadata);
-		user.updateImageUrl(key);	//서버가 bucket 을 저장하고 있으으로, pull path 가 아닌 key 를 저장한다.
-
-		return amazonS3.getUrl(bucket, key).toString();
+		try {
+			InputStream inputStream = multipartFile.getInputStream();
+			amazonS3.putObject(bucket, key, inputStream, metadata);
+			user.updateImageUrl(key);    //서버가 bucket 을 저장하고 있으으로, pull path 가 아닌 key 를 저장한다.
+		} catch (IOException e) {
+			throw new IllegalStateException("multipart file upload failed !!");
+		}
 	}
 
 	/**
