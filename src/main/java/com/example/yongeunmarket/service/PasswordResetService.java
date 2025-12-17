@@ -14,6 +14,7 @@ import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -30,43 +31,38 @@ public class PasswordResetService {
 	private final MailSender mailSender;
 	private final UserRepository userRepository;
 
+	@Transactional
 	public void sendResetCode(Long userId) {
 
 		User user = getUserOrThrow(userId);
 		String email = user.getEmail();
 
 		SimpleMailMessage msg = new SimpleMailMessage();
-		// 받는 사람 이메일
-		msg.setTo(email);
-		// 이메일 제목
-		msg.setSubject("인증 코드 6자리 발송");
-		// 이메일 내용
-		String resetCode = generate6CharCode();
-		msg.setText(resetCode);
 
-		String redisKey = redisPrefix + userId;
-		// Redis에 저장
-		redisTemplate.opsForValue().set(redisKey, resetCode, expiryMinutes, TimeUnit.MINUTES);
+		msg.setTo(email); 	// 받는 사람 이메일
+		msg.setSubject("인증 코드 6자리 발송"); // 메일 제목
+		String resetCode = generate6CharCode();
+		msg.setText(resetCode); // 메일 content
 
 		try {
-			// 메일 보내기
 			this.mailSender.send(msg);
-			System.out.println("이메일 전송 성공!");
+			cacheResetCode(userId, resetCode);
 		} catch (MailException exception) {
 			throw new IllegalStateException("이메일 전송 실패");
 		}
 	}
 
 	private User getUserOrThrow(Long userId) {
+
 		return userRepository.findById(userId).orElseThrow(
 			() -> new EntityNotFoundException("user 가 존재하지 않음"));
 	}
-
 	/**
 	 * 인증 코드 생성기
 	 * 무작위 6가지 코드 (숫자+알파벳)
 	 */
 	private static String generate6CharCode() {
+
 		final String charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 		final int length = 6;
 		SecureRandom random = new SecureRandom();
@@ -76,5 +72,16 @@ public class PasswordResetService {
 		}
 
 		return code.toString();
+	}
+
+	/**
+	 * 레디스에 TTL 로 resetCode 를 저장하는 메서드
+	 * @param userId
+	 * @param resetCode
+	 */
+	private void cacheResetCode(Long userId, String resetCode) {
+
+		String redisKey = redisPrefix + userId;
+		redisTemplate.opsForValue().set(redisKey, resetCode, expiryMinutes, TimeUnit.MINUTES);
 	}
 }
