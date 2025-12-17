@@ -15,7 +15,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
-import com.example.yongeunmarket.entity.User;
+import com.example.yongeunmarket.repository.UserRepository;
+import com.example.yongeunmarket.security.CustomUserDetails;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -30,26 +31,30 @@ public class JwtTokenProvider {
 
 	private final Key key;
 	private final long tokenValidityInMilliseconds;
+	private final UserRepository userRepository;
 
 	public JwtTokenProvider(
 		@Value("${jwt.secret}") String secret,
-		@Value("${jwt.token-validity-in-seconds}") long tokenValidityInSeconds) {
+		@Value("${jwt.token-validity-in-seconds}") long tokenValidityInSeconds, UserRepository userRepository) {
 		this.key = Keys.hmacShaKeyFor(secret.getBytes());
 		this.tokenValidityInMilliseconds = tokenValidityInSeconds * 1000;
+		this.userRepository = userRepository;
 	}
 
 	/**
 	 * 사용자 정보를 이용해 JWT 토큰을 생성합니다.
 	 */
-	public String createToken(User user) {
-		String authoritiy = "ROLE_" + user.getRole();
+	public String createToken(CustomUserDetails user) {
+		String authoritiy = "ROLE_" + user.getAuthorities();
 
 		long now = (new Date()).getTime();
 		Date validity = new Date(now + this.tokenValidityInMilliseconds);
 
 		return Jwts.builder()
-			.setSubject(user.getEmail())
+			.setSubject(user.getUsername())
 			.claim("auth", authoritiy)
+			.claim("userId", user.getUserId())
+			.claim("email", user.getUsername())
 			.signWith(key, SignatureAlgorithm.HS512)
 			.setExpiration(validity)
 			.compact();
@@ -74,14 +79,10 @@ public class JwtTokenProvider {
 				.map(SimpleGrantedAuthority::new)
 				.collect(Collectors.toList());
 
-		org.springframework.security.core.userdetails.User principal =
-			new org.springframework.security.core.userdetails.User(
-				claims.getSubject(),
-				"",
-				authorities
-			);
+		Long userId = Long.parseLong(claims.get("userId").toString());
+		CustomUserDetails userDetails = new CustomUserDetails(userId);
 
-		return new UsernamePasswordAuthenticationToken(principal, token, authorities);
+		return new UsernamePasswordAuthenticationToken(userDetails, token, authorities);
 	}
 
 	/**
