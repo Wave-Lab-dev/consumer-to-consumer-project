@@ -10,6 +10,7 @@ import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.stereotype.Service;
 
+import com.example.yongeunmarket.dto.user.VerifyPasswordReqDto;
 import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.repository.UserRepository;
 
@@ -25,9 +26,11 @@ public class PasswordResetService {
 	private String redisPrefix;
 
 	@Value("${password-reset.expiry-minutes}")
-	private int expiryMinutes;
+	private Long expiryMinutes;
 
-	private final RedisTemplate<String, Object> redisTemplate;
+	private static int RESET_CODE_LENGTH = 6;// 재설정 코드 길이
+
+	private final RedisTemplate<String, String> redisTemplate;
 	private final MailSender mailSender;
 	private final UserRepository userRepository;
 
@@ -52,6 +55,28 @@ public class PasswordResetService {
 		}
 	}
 
+	@Transactional
+	public void resetPassword(VerifyPasswordReqDto verifyPasswordReqDto, Long userId) {
+
+		User user = getUserOrThrow(userId);
+		String redisKey = redisPrefix + userId;
+		// redisKey 유효성 검사
+		String clientResetCode = redisTemplate.opsForValue().get(redisKey); //Object -> String으로 형변환
+		String serverResetCode = verifyPasswordReqDto.getResetCode();
+
+		if(clientResetCode == null) { //만료 혹은 진짜 없음 410
+			throw new IllegalStateException("재설정 코드가 만료되었거나, 존재하지 않습니다");
+		}
+		//key 는 있는데 재설정 코드가 서로 다르다 404
+		if(!clientResetCode.equals(serverResetCode)) {
+			throw new IllegalStateException("재설정 코드가 일치하지 않습니다");
+		}
+		redisTemplate.delete(redisKey);
+
+		String newPassword = verifyPasswordReqDto.getNewPassword();
+		user.updatePassword(newPassword);
+	}
+
 	private User getUserOrThrow(Long userId) {
 
 		return userRepository.findById(userId).orElseThrow(
@@ -63,11 +88,10 @@ public class PasswordResetService {
 	 */
 	private static String generate6CharCode() {
 
-		final String charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-		final int length = 6;
+		final String charset = "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
 		SecureRandom random = new SecureRandom();
-		StringBuilder code = new StringBuilder(length);//가변적인 문자열
-		for (int i = 0; i < length; i++) {
+		StringBuilder code = new StringBuilder(RESET_CODE_LENGTH);//가변적인 문자열
+		for (int i = 0; i < RESET_CODE_LENGTH; i++) {
 			code.append(charset.charAt(random.nextInt(charset.length())));
 		}
 
@@ -84,4 +108,5 @@ public class PasswordResetService {
 		String redisKey = redisPrefix + userId;
 		redisTemplate.opsForValue().set(redisKey, resetCode, expiryMinutes, TimeUnit.MINUTES);
 	}
+
 }
