@@ -21,7 +21,7 @@ public class TestDataInit {
 	public void init(){
 
 		User user1 = User.builder()
-			.email("test1@naver.com")
+			.email("juwqq1234@naver.com")
 			.password("1234")
 			.build();
 
