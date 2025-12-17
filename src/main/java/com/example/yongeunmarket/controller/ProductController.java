@@ -66,7 +66,7 @@ public class ProductController {
 	}
 
 	@DeleteMapping("/{productId}")
-	public ResponseEntity<?> removeProduct(@PathVariable Long productId) {
+	public ResponseEntity<Void> removeProduct(@PathVariable Long productId) {
 		//@AuthenticationPrincipal CustomUserDetails
 		// Long userId = CustomUserDetails.getUsername();
 		//인증인가 미 구현으로 임시 하드코딩
