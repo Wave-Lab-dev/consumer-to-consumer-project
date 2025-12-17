@@ -31,7 +31,7 @@ public class ChatRoom extends BaseEntity {
 	@Column(nullable = false)
 	private ChatStatus status = ChatStatus.OPEN;
 
-	@Column(name = "close_at", nullable = false)
+	@Column(name = "close_at", nullable = true)
 	private LocalDateTime closedAt;
 
 	// @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.REMOVE) 보류
