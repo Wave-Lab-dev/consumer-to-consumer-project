@@ -31,12 +31,14 @@ public class User {
 	private String imageUrl;
 
 	@Enumerated(EnumType.STRING)
-	private UserRole role = UserRole.BUYER;
+	@Column(name = "role")
+	private UserRole role;
 
 	@Builder
-	public User(String email, String password, String imageUrl) {
+	public User(String email, String password, UserRole role, String imageUrl) {
 		this.email = email;
 		this.password = password;
+		this.role = role;
 		this.imageUrl = imageUrl;
 	}
 
