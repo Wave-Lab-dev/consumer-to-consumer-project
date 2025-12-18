@@ -16,7 +16,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import com.example.yongeunmarket.entity.UserRole;
-import com.example.yongeunmarket.repository.UserRepository;
 import com.example.yongeunmarket.security.CustomUserDetails;
 
 import io.jsonwebtoken.Claims;
@@ -35,7 +34,7 @@ public class JwtTokenProvider {
 
 	public JwtTokenProvider(
 		@Value("${jwt.secret}") String secret,
-		@Value("${jwt.token-validity-in-seconds}") long tokenValidityInSeconds, UserRepository userRepository) {
+		@Value("${jwt.token-validity-in-seconds}") long tokenValidityInSeconds) {
 		this.key = Keys.hmacShaKeyFor(secret.getBytes());
 		this.tokenValidityInMilliseconds = tokenValidityInSeconds * 1000;
 	}
@@ -53,7 +52,6 @@ public class JwtTokenProvider {
 			.setSubject(user.getUsername())
 			.claim("auth", authority)
 			.claim("userId", user.getUserId())
-			.claim("email", user.getUsername())
 			.signWith(key, SignatureAlgorithm.HS512)
 			.setExpiration(validity)
 			.compact();
