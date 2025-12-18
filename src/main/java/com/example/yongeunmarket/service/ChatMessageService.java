@@ -8,6 +8,7 @@ import com.example.yongeunmarket.dto.chat.ChatMessageResDto;
 import com.example.yongeunmarket.dto.chat.MessageReadResDto;
 import com.example.yongeunmarket.entity.ChatMessage;
 import com.example.yongeunmarket.entity.ChatRoom;
+import com.example.yongeunmarket.entity.ChatStatus;
 import com.example.yongeunmarket.entity.ReadStatus;
 import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.repository.ChatMessageRepository;
@@ -32,6 +33,11 @@ public class ChatMessageService {
 		// 1. 채팅방 조회
 		ChatRoom chatRoom = chatRoomRepository.findById(reqDto.getRoomId())
 			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 채팅방입니다."));
+
+		// 채팅방 상태 검사 (CLOSED면 메시지 전송 차단)
+		if (chatRoom.getStatus() == ChatStatus.CLOSED) {
+			throw new IllegalStateException("종료된 채팅방에는 메시지를 보낼 수 없습니다.");
+		}
 
 		// 2. 유저 조회
 		User user = userRepository.findById(reqDto.getSenderId())
