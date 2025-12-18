@@ -13,6 +13,7 @@ public class CreateChatRoomResDto {
 	private Long sellerId;
 	private Long productId;
 	private LocalDateTime createdAt;
+
 	private FirstMessageDto firstMessage;
 
 	@Getter

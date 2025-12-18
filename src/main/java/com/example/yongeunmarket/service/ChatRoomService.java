@@ -1,7 +1,5 @@
 package com.example.yongeunmarket.service;
 
-import java.util.Optional;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,87 +15,93 @@ import com.example.yongeunmarket.repository.ChatMessageRepository;
 import com.example.yongeunmarket.repository.ChatParticipantRepository;
 import com.example.yongeunmarket.repository.ChatRoomRepository;
 import com.example.yongeunmarket.repository.ProductRepository;
+import com.example.yongeunmarket.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ChatRoomService {
 
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatParticipantRepository chatParticipantRepository;
 	private final ChatMessageRepository chatMessageRepository;
+	private final UserRepository userRepository;
 	private final ProductRepository productRepository;
 
 	@Transactional
-	public CreateChatRoomResDto createChatRoom(User buyer, CreateChatRoomReqDto request) {
+	public CreateChatRoomResDto createChatRoom(CreateChatRoomReqDto request, Long buyerId) {
+		// 1. 사용자(구매자) 조회
+		User buyer = userRepository.findById(buyerId)
+			.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-		// 1. 상품 조회 (판매자 및 상품명 확인용)
 		Product product = productRepository.findById(request.getProductId())
-			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품입니다."));
-		User seller = product.getUser();
-		String roomName = product.getName(); // 방 이름은 상품명으로 설정
+			.orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
 
-		// 2. 중복 방 확인 (상품명 + 구매자 기준)
-		Optional<ChatRoom> existingRoom = chatRoomRepository.findByNameAndBuyer(roomName, buyer);
-		if (existingRoom.isPresent()) {
-			// 이미 방이 있으면 기존 방 정보 리턴 (메시지는 null 처리)
-			return mapToResDto(existingRoom.get(), buyer, seller, null, product.getId());
+		User seller = product.getUser();
+
+		// 2. 유효성 검사 (자신의 상품에 채팅 불가)
+		if (buyer.getId().equals(seller.getId())) {
+			throw new IllegalArgumentException("자신의 상품에는 채팅을 요청할 수 없습니다.");
 		}
 
-		// 3. 채팅방 생성
+		// 3. 기존 방 확인
+		String roomName = String.valueOf(product.getId());
+
+		return chatRoomRepository.findByNameAndBuyer(roomName, buyer)
+			.map(existingRoom -> makeResponse(existingRoom, product, buyer, seller)) // 기존 방 있으면 반환
+			.orElseGet(() -> createNewRoom(request, product, buyer, seller, roomName)); // 없으면 생성
+	}
+
+	// --- 신규 방 생성 로직 ---
+	private CreateChatRoomResDto createNewRoom(CreateChatRoomReqDto request, Product product, User buyer, User seller,
+		String roomName) {
+		// 1. 방 생성
 		ChatRoom chatRoom = ChatRoom.builder()
 			.name(roomName)
 			.status(ChatStatus.OPEN)
 			.build();
-		ChatRoom savedRoom = chatRoomRepository.save(chatRoom);
+		chatRoomRepository.save(chatRoom);
 
-		// 4. 참여자(Participant) 등록 - 구매자와 판매자 모두 등록
-		ChatParticipant buyerParticipant = ChatParticipant.builder()
-			.chatRoom(savedRoom)
+		// 2. 참여자 등록
+		chatParticipantRepository.save(ChatParticipant.builder().chatRoom(chatRoom).user(buyer).build());
+		chatParticipantRepository.save(ChatParticipant.builder().chatRoom(chatRoom).user(seller).build());
+
+		// 3. 첫 메시지 저장
+		ChatMessage message = ChatMessage.builder()
+			.chatRoom(chatRoom)
 			.user(buyer)
-			.build();
-		ChatParticipant sellerParticipant = ChatParticipant.builder()
-			.chatRoom(savedRoom)
-			.user(seller)
-			.build();
-
-		chatParticipantRepository.save(buyerParticipant);
-		chatParticipantRepository.save(sellerParticipant);
-
-		// 5. 첫 번째 메시지 저장 (보낸 사람: 구매자)
-		ChatMessage firstMessage = ChatMessage.builder()
-			.chatRoom(savedRoom)
-			.user(buyer) // 엔티티 필드명이 sender가 아니라 user임
 			.content(request.getContent())
 			.build();
-		ChatMessage savedMessage = chatMessageRepository.save(firstMessage);
+		chatMessageRepository.save(message);
 
-		// 6. 결과 반환
-		return mapToResDto(savedRoom, buyer, seller, savedMessage, product.getId());
-	}
-
-	// 응답 DTO 변환 메서드
-	private CreateChatRoomResDto mapToResDto(ChatRoom room, User buyer, User seller, ChatMessage message,
-		Long productId) {
-		CreateChatRoomResDto.FirstMessageDto messageDto = null;
-
-		if (message != null) {
-			messageDto = CreateChatRoomResDto.FirstMessageDto.builder()
+		// 4. 응답 생성
+		return CreateChatRoomResDto.builder()
+			.roomId(chatRoom.getId())
+			.buyerId(buyer.getId())
+			.sellerId(seller.getId())
+			.productId(product.getId())
+			.createdAt(chatRoom.getCreatedAt())
+			.firstMessage(CreateChatRoomResDto.FirstMessageDto.builder()
 				.messageId(message.getId())
-				.senderId(message.getUser().getUserId())
+				.senderId(buyer.getId())
 				.content(message.getContent())
 				.createdAt(message.getCreatedAt())
-				.build();
-		}
+				.build())
+			.build();
+	}
+
+	// --- 기존 방 응답 변환 로직 ---
+	private CreateChatRoomResDto makeResponse(ChatRoom chatRoom, Product product, User buyer, User seller) {
 
 		return CreateChatRoomResDto.builder()
-			.roomId(room.getId())
-			.buyerId(buyer.getUserId())
-			.sellerId(seller.getUserId())
-			.productId(productId)
-			.createdAt(room.getCreatedAt())
-			.firstMessage(messageDto)
+			.roomId(chatRoom.getId())
+			.buyerId(buyer.getId())
+			.sellerId(seller.getId())
+			.productId(product.getId())
+			.createdAt(chatRoom.getCreatedAt())
+			.firstMessage(null)
 			.build();
 	}
 }
