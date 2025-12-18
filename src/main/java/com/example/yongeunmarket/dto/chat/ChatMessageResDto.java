@@ -9,6 +9,7 @@ public class ChatMessageResDto {
 	private Long messageId;
 	private Long roomId;
 	private Long senderId;
+	private Long receiverId;
 	private String content;
 	private String createdAt;
 }

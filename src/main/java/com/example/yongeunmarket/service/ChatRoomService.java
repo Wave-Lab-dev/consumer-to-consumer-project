@@ -1,19 +1,25 @@
 package com.example.yongeunmarket.service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.yongeunmarket.dto.chat.ChatRoomCloseResDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomReqDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomResDto;
 import com.example.yongeunmarket.entity.ChatMessage;
 import com.example.yongeunmarket.entity.ChatParticipant;
 import com.example.yongeunmarket.entity.ChatRoom;
 import com.example.yongeunmarket.entity.ChatStatus;
+import com.example.yongeunmarket.entity.CounselingInfo;
 import com.example.yongeunmarket.entity.Product;
 import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.repository.ChatMessageRepository;
 import com.example.yongeunmarket.repository.ChatParticipantRepository;
 import com.example.yongeunmarket.repository.ChatRoomRepository;
+import com.example.yongeunmarket.repository.CounselingInfoRepository;
 import com.example.yongeunmarket.repository.ProductRepository;
 import com.example.yongeunmarket.repository.UserRepository;
 
@@ -29,6 +35,7 @@ public class ChatRoomService {
 	private final ChatMessageRepository chatMessageRepository;
 	private final UserRepository userRepository;
 	private final ProductRepository productRepository;
+	private final CounselingInfoRepository counselingInfoRepository;
 
 	@Transactional
 	public CreateChatRoomResDto createChatRoom(CreateChatRoomReqDto request, Long buyerId) {
@@ -50,8 +57,56 @@ public class ChatRoomService {
 		String roomName = String.valueOf(product.getId());
 
 		return chatRoomRepository.findByNameAndBuyer(roomName, buyer)
-			.map(existingRoom -> makeResponse(existingRoom, product, buyer, seller)) // 기존 방 있으면 반환
-			.orElseGet(() -> createNewRoom(request, product, buyer, seller, roomName)); // 없으면 생성
+			.map(existingRoom -> makeResponse(existingRoom, product, buyer, seller))
+			.orElseGet(() -> createNewRoom(request, product, buyer, seller, roomName));
+	}
+
+	@Transactional
+	public ChatRoomCloseResDto closeChatRoom(Long roomId, Long userId) {
+		// 1. 채팅방 조회
+		ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다."));
+
+		// 2. 본인 방인지 확인
+		if (!chatRoom.getBuyer().getId().equals(userId)) {
+			throw new IllegalArgumentException("본인의 상담방만 종료할 수 있습니다.");
+		}
+
+		// 2-1. 이미 종료된 방인지 체크
+		if (chatRoom.getStatus() == ChatStatus.CLOSED) {
+			throw new IllegalStateException("이미 종료된 상담방입니다.");
+		}
+
+		// 3. 통계 계산
+		int messageCountInt = chatMessageRepository.countByChatRoomId(roomId);
+		short messageCount = (short)messageCountInt;
+
+		// 3-1. 경과 시간 계산
+		LocalDateTime now = LocalDateTime.now();
+		long durationMinutes = Duration.between(chatRoom.getCreatedAt(), now).toMinutes();
+
+		// 4. ChatRoom 상태 변경 (CLOSED, closedAt 기록)
+		chatRoom.chatRoomClose();
+
+		// 5. CounselingInfo 엔티티 생성 및 저장
+		CounselingInfo counselingInfo = CounselingInfo.builder()
+			.chatRoom(chatRoom)
+			.messageCount(messageCount)
+			.elapsedTime((int)durationMinutes)
+			.build();
+
+		counselingInfoRepository.save(counselingInfo);
+
+		// 6. 결과 반환
+		return ChatRoomCloseResDto.builder()
+			.roomId(chatRoom.getId())
+			.status(chatRoom.getStatus().name())
+			.closedAt(chatRoom.getClosedAt().toString())
+			.summary(ChatRoomCloseResDto.ChatRoomSummary.builder()
+				.totalMessages(messageCountInt)
+				.durationMinutes((int)durationMinutes)
+				.build())
+			.build();
 	}
 
 	// --- 신규 방 생성 로직 ---
