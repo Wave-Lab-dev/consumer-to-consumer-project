@@ -2,11 +2,14 @@ package com.example.yongeunmarket.service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.yongeunmarket.dto.chat.ChatRoomCloseResDto;
+import com.example.yongeunmarket.dto.chat.ChatRoomListResDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomReqDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomResDto;
 import com.example.yongeunmarket.entity.ChatMessage;
@@ -107,6 +110,45 @@ public class ChatRoomService {
 				.durationMinutes((int)durationMinutes)
 				.build())
 			.build();
+	}
+
+	public List<ChatRoomListResDto> findAllChatRooms(Long userId) {
+		// 1. 내가 참여한 모든 채팅방 조회
+		List<ChatRoom> myChatRooms = chatRoomRepository.findMyChatRooms(userId);
+
+		// 2. DTO 리스트로 변환
+		return myChatRooms.stream().map(chatRoom -> {
+			// A. 상품 정보 찾기
+			Long productId = Long.parseLong(chatRoom.getName());
+			Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
+
+			// B. 마지막 메시지 찾기
+			ChatMessage lastMessage = chatMessageRepository.findFirstByChatRoomIdOrderByCreatedAtDesc(chatRoom.getId())
+				.orElse(null);
+
+			// C. 안 읽은 메시지 수
+			int unreadCount = 0; // (추후 읽음 처리 구현 시 수정 필요)
+
+			// D. 판매자 ID 찾기
+			Long sellerId = product.getUser().getId();
+
+			// E. 구매자 ID 찾기
+			Long buyerId = chatRoom.getBuyer().getId();
+
+			// F. DTO 빌드
+			return ChatRoomListResDto.builder()
+				.roomId(chatRoom.getId())
+				.productId(productId)
+				.productName(product.getName())
+				.buyerId(buyerId)
+				.sellerId(sellerId)
+				.lastMessage(lastMessage != null ? lastMessage.getContent() : "")
+				.lastMessageTime(lastMessage != null ? lastMessage.getCreatedAt().toString() : "")
+				.status(chatRoom.getStatus().name())
+				.unreadCount(unreadCount)
+				.build();
+		}).collect(Collectors.toList());
 	}
 
 	// --- 신규 방 생성 로직 ---
