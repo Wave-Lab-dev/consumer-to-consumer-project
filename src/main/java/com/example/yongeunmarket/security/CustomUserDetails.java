@@ -4,28 +4,36 @@ import java.util.Collection;
 import java.util.List;
 
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import com.example.yongeunmarket.entity.User;
+import com.example.yongeunmarket.entity.UserRole;
 
+import lombok.Getter;
+
+@Getter
 public class CustomUserDetails implements UserDetails {
 
 	private Long userId;
 	private String password;
+	private UserRole role;
 
 	public CustomUserDetails(User user) {
 		this.userId = user.getId();
 		this.password = user.getPassword();
+		this.role = user.getRole();
 	}
 
-	public CustomUserDetails(Long userId) {
+	public CustomUserDetails(Long userId, UserRole role) {
 		this.userId = userId;
+		this.password = "";
+		this.role = role;
 	}
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		//수정 예정
-		return List.of();
+		return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
 	}
 
 	@Override
@@ -36,9 +44,5 @@ public class CustomUserDetails implements UserDetails {
 	@Override
 	public String getUsername() {
 		return "";
-	}
-
-	public Long getUserId() {
-		return this.userId;
 	}
 }
