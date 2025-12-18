@@ -23,7 +23,6 @@ public class CustomUserDetailsService implements UserDetailsService {
 			() -> new UsernameNotFoundException("User not found")
 		);
 
-		System.out.println("find user");
 		return new CustomUserDetails(user);
 	}
 }
