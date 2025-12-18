@@ -45,4 +45,12 @@ public class User extends BaseEntity {
 	public void updateImageUrl(String imageUrl) {
 		this.imageUrl = imageUrl;
 	}
+
+	public void updatePassword(String password) {
+		this.password = password;
+	}
+
+	public enum UserRole {
+		ADMIN, BUYER, SELLER
+	}
 }
