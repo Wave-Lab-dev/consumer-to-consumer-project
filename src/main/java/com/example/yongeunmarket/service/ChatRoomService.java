@@ -25,6 +25,7 @@ import com.example.yongeunmarket.repository.ChatParticipantRepository;
 import com.example.yongeunmarket.repository.ChatRoomRepository;
 import com.example.yongeunmarket.repository.CounselingInfoRepository;
 import com.example.yongeunmarket.repository.ProductRepository;
+import com.example.yongeunmarket.repository.ReadStatusRepository;
 import com.example.yongeunmarket.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -40,7 +41,9 @@ public class ChatRoomService {
 	private final UserRepository userRepository;
 	private final ProductRepository productRepository;
 	private final CounselingInfoRepository counselingInfoRepository;
+	private final ReadStatusRepository readStatusRepository;
 
+	// 채팅방 생성
 	@Transactional
 	public CreateChatRoomResDto createChatRoom(CreateChatRoomReqDto request, Long buyerId) {
 		// 1. 사용자(구매자) 조회
@@ -65,6 +68,7 @@ public class ChatRoomService {
 			.orElseGet(() -> createNewRoom(request, product, buyer, seller, roomName));
 	}
 
+	// 상담 종료
 	@Transactional
 	public ChatRoomCloseResDto closeChatRoom(Long roomId, Long userId) {
 		// 1. 채팅방 조회
@@ -129,7 +133,7 @@ public class ChatRoomService {
 				.orElse(null);
 
 			// C. 안 읽은 메시지 수
-			int unreadCount = 0; // (추후 읽음 처리 구현 시 수정 필요)
+			int unreadCount = chatMessageRepository.countUnreadMessages(chatRoom.getId(), userId);
 
 			// D. 판매자 ID 찾기
 			Long sellerId = product.getUser().getId();
@@ -162,11 +166,11 @@ public class ChatRoomService {
 		Product product = productRepository.findById(productId)
 			.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
 
-		Long sellerId = product.getUser().getId();
-		Long buyerId = chatRoom.getBuyer().getId();
+		User seller = product.getUser();
+		User buyer = chatRoom.getBuyer();
 
 		// 3. 권한 검사
-		if (!userId.equals(buyerId) && !userId.equals(sellerId)) {
+		if (!userId.equals(buyer.getId()) && !userId.equals(seller.getId())) {
 			throw new IllegalArgumentException("해당 채팅방에 접근 권한이 없습니다.");
 		}
 
@@ -175,21 +179,27 @@ public class ChatRoomService {
 
 		// 5. 메시지 DTO 리스트 변환
 		List<ChatRoomDetailResDto.ChatMessageDetailDto> messageDtos = messages.stream()
-			.map(msg -> ChatRoomDetailResDto.ChatMessageDetailDto.builder()
-				.messageId(msg.getId())
-				.senderId(msg.getUser().getId())
-				.content(msg.getContent())
-				.createdAt(msg.getCreatedAt().toString())
-				.isRead(false) // 읽음기능 미구현으로 추후 수정
-				.build())
-			.toList();
+			.map(msg -> {
+				User recipient = msg.getUser().getId().equals(buyer.getId()) ? seller : buyer;
+
+				boolean isRead = readStatusRepository.findByChatMessageAndUser(msg, recipient).isPresent();
+
+				return ChatRoomDetailResDto.ChatMessageDetailDto.builder()
+					.messageId(msg.getId())
+					.senderId(msg.getUser().getId())
+					.content(msg.getContent())
+					.createdAt(msg.getCreatedAt().toString())
+					.isRead(isRead)
+					.build();
+			})
+			.collect(Collectors.toList());
 
 		// 6. 결과 반환
 		return ChatRoomDetailResDto.builder()
 			.roomId(chatRoom.getId())
 			.productId(productId)
-			.sellerId(sellerId)
-			.buyerId(buyerId)
+			.sellerId(seller.getId())
+			.buyerId(buyer.getId())
 			.status(chatRoom.getStatus().name())
 			.messages(messageDtos)
 			.build();
