@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.yongeunmarket.dto.chat.ChatRoomCloseResDto;
+import com.example.yongeunmarket.dto.chat.ChatRoomDetailResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomListResDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomReqDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomResDto;
@@ -62,6 +63,18 @@ public class ChatRoomController {
 
 		Long userId = userDetails.getUserId();
 		List<ChatRoomListResDto> response = chatRoomService.findAllChatRooms(userId);
+
+		return ResponseEntity.status(HttpStatus.OK).body(response);
+	}
+
+	// 특정 채팅방 상세 내용 조회
+	@GetMapping("/{roomId}")
+	public ResponseEntity<ChatRoomDetailResDto> getChatRoomDetail(
+		@PathVariable Long roomId,
+		@AuthenticationPrincipal CustomUserDetails userDetails) {
+
+		Long userId = userDetails.getUserId();
+		ChatRoomDetailResDto response = chatRoomService.findChatRoomDetail(roomId, userId);
 
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}

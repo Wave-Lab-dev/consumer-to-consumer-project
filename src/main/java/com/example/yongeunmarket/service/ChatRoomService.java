@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.yongeunmarket.dto.chat.ChatRoomCloseResDto;
+import com.example.yongeunmarket.dto.chat.ChatRoomDetailResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomListResDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomReqDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomResDto;
@@ -149,6 +150,49 @@ public class ChatRoomService {
 				.unreadCount(unreadCount)
 				.build();
 		}).collect(Collectors.toList());
+	}
+
+	public ChatRoomDetailResDto findChatRoomDetail(Long roomId, Long userId) {
+		// 1. 채팅방 조회
+		ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다."));
+
+		// 2. 상품 및 판매자/구매자 정보 조회
+		Long productId = Long.parseLong(chatRoom.getName());
+		Product product = productRepository.findById(productId)
+			.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
+
+		Long sellerId = product.getUser().getId();
+		Long buyerId = chatRoom.getBuyer().getId();
+
+		// 3. 권한 검사
+		if (!userId.equals(buyerId) && !userId.equals(sellerId)) {
+			throw new IllegalArgumentException("해당 채팅방에 접근 권한이 없습니다.");
+		}
+
+		// 4. 메시지 목록 조회
+		List<ChatMessage> messages = chatMessageRepository.findAllByChatRoomIdOrderByCreatedAtAsc(roomId);
+
+		// 5. 메시지 DTO 리스트 변환
+		List<ChatRoomDetailResDto.ChatMessageDetailDto> messageDtos = messages.stream()
+			.map(msg -> ChatRoomDetailResDto.ChatMessageDetailDto.builder()
+				.messageId(msg.getId())
+				.senderId(msg.getUser().getId())
+				.content(msg.getContent())
+				.createdAt(msg.getCreatedAt().toString())
+				.isRead(false) // 읽음기능 미구현으로 추후 수정
+				.build())
+			.toList();
+
+		// 6. 결과 반환
+		return ChatRoomDetailResDto.builder()
+			.roomId(chatRoom.getId())
+			.productId(productId)
+			.sellerId(sellerId)
+			.buyerId(buyerId)
+			.status(chatRoom.getStatus().name())
+			.messages(messageDtos)
+			.build();
 	}
 
 	// --- 신규 방 생성 로직 ---
