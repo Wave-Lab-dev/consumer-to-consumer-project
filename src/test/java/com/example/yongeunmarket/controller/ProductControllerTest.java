@@ -1,21 +1,28 @@
 package com.example.yongeunmarket.controller;
 
-import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.BDDMockito.*;
+import static org.mockito.BDDMockito.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.yongeunmarket.config.SecurityConfig;
 import com.example.yongeunmarket.dto.product.CreateProductReqDto;
 import com.example.yongeunmarket.dto.product.CreateProductResDto;
 import com.example.yongeunmarket.dto.product.GetProductResDto;
@@ -23,11 +30,14 @@ import com.example.yongeunmarket.dto.product.UpdateProductReqDto;
 import com.example.yongeunmarket.dto.product.UpdateProductResDto;
 import com.example.yongeunmarket.entity.Product;
 import com.example.yongeunmarket.entity.User;
+import com.example.yongeunmarket.jwt.JwtTokenProvider;
+import com.example.yongeunmarket.security.CustomUserDetails;
+import com.example.yongeunmarket.security.CustomUserDetailsService;
 import com.example.yongeunmarket.service.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @WebMvcTest(controllers = ProductController.class) //controller 레이어만 컨테이너에 추가
-	//@Import(SecurityConfig.class)
+@Import(SecurityConfig.class)
 class ProductControllerTest {
 
 	@Autowired
@@ -37,14 +47,30 @@ class ProductControllerTest {
 	private ObjectMapper objectMapper;
 
 	@MockitoBean
+	private JwtTokenProvider jwtTokenProvider;
+
+	@MockitoBean
+	private CustomUserDetails customUserDetails;
+
+	@MockitoBean
+	private CustomUserDetailsService customUserDetailsService;
+
+	@MockitoBean
 	private ProductService productService;
 
-	// @BeforeEach
-	// void setUp() {
-	// 	SecurityContextHolder.getContext().setAuthentication(
-	// 		new UsernamePasswordAuthenticationToken("user", null, Collections.emptyList())
-	// 	);
-	// }
+	@BeforeEach
+	void setUp() {
+		CustomUserDetails userDetails = mock(CustomUserDetails.class);
+		given(userDetails.getUserId()).willReturn(1L);
+
+		SecurityContextHolder.getContext().setAuthentication(
+			new UsernamePasswordAuthenticationToken(
+				userDetails,
+				null,
+				Collections.emptyList()
+			)
+		);
+	}
 
 	@Test
 	void givenCreateProductReq_whenCreateProduct_thenReturnCreateProductRes() throws Exception {
