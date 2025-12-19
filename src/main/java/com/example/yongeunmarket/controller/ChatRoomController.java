@@ -1,15 +1,24 @@
 package com.example.yongeunmarket.controller;
 
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.yongeunmarket.dto.chat.ChatRoomCloseResDto;
+import com.example.yongeunmarket.dto.chat.ChatRoomDetailResDto;
+import com.example.yongeunmarket.dto.chat.ChatRoomListResDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomReqDto;
 import com.example.yongeunmarket.dto.chat.CreateChatRoomResDto;
-import com.example.yongeunmarket.entity.User;
-import com.example.yongeunmarket.repository.UserRepository;
+import com.example.yongeunmarket.security.CustomUserDetails;
 import com.example.yongeunmarket.service.ChatRoomService;
 
 import lombok.RequiredArgsConstructor;
@@ -20,19 +29,55 @@ import lombok.RequiredArgsConstructor;
 public class ChatRoomController {
 
 	private final ChatRoomService chatRoomService;
-	private final UserRepository userRepository; // 임시 테스트용
 
+	// 채팅방 생성
 	@PostMapping
-	public ResponseEntity<CreateChatRoomResDto> createChatRoom(@RequestBody CreateChatRoomReqDto request) {
+	public ResponseEntity<CreateChatRoomResDto> createChatRoom(
+		@RequestBody CreateChatRoomReqDto request,
+		@AuthenticationPrincipal CustomUserDetails userDetails) {
 
-		// 임시 로그인
-		Long tempBuyerId = 1L;
-		User buyer = userRepository.findById(tempBuyerId)
-			.orElseThrow(() -> new IllegalArgumentException("임시 테스트용 유저(ID:1)가 DB에 없습니다."));
-		// -----------------------------------------------------------------
+		// 사용자 ID 추출
+		Long buyerId = userDetails.getUserId();
+		CreateChatRoomResDto response = chatRoomService.createChatRoom(request, buyerId);
 
-		CreateChatRoomResDto response = chatRoomService.createChatRoom(buyer, request);
-		return ResponseEntity.ok(response);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
+
+	// 상담 종료
+	@PatchMapping("/{roomId}/close")
+	public ResponseEntity<ChatRoomCloseResDto> closeChatRoom(
+		@PathVariable Long roomId,
+		@AuthenticationPrincipal CustomUserDetails userDetails) {
+
+		// 사용자 ID 추출
+		Long userId = userDetails.getUserId();
+		ChatRoomCloseResDto response = chatRoomService.closeChatRoom(roomId, userId);
+
+		return ResponseEntity.status(HttpStatus.OK).body(response);
+	}
+
+	// 유저 채팅방 목록 조회
+	@GetMapping
+	public ResponseEntity<List<ChatRoomListResDto>> getMyChatRooms(
+		@AuthenticationPrincipal CustomUserDetails userDetails) {
+
+		Long userId = userDetails.getUserId();
+		List<ChatRoomListResDto> response = chatRoomService.findAllChatRooms(userId);
+
+		return ResponseEntity.status(HttpStatus.OK).body(response);
+	}
+
+	// 특정 채팅방 상세 내용 조회
+	@GetMapping("/{roomId}")
+	public ResponseEntity<ChatRoomDetailResDto> getChatRoomDetail(
+		@PathVariable Long roomId,
+		@AuthenticationPrincipal CustomUserDetails userDetails) {
+
+		Long userId = userDetails.getUserId();
+		ChatRoomDetailResDto response = chatRoomService.findChatRoomDetail(roomId, userId);
+
+		return ResponseEntity.status(HttpStatus.OK).body(response);
+	}
+
 }
 

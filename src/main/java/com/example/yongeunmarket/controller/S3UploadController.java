@@ -2,6 +2,7 @@ package com.example.yongeunmarket.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.yongeunmarket.security.CustomUserDetails;
 import com.example.yongeunmarket.service.S3UploadService;
 
 import lombok.RequiredArgsConstructor;
@@ -22,9 +24,9 @@ public class S3UploadController {
 
 	@PostMapping("/{userId}/upload")
 	public ResponseEntity<Void> uploadFile(@RequestPart("multipartFile") MultipartFile multipartFile,
-		@PathVariable Long userId) {
-		//@AuthenticationPrincipal CustomUserDetails
-		Long currentUserId = 1L; // userDetails.getUsername() 인증 인가 미구현으로 인한 하드코딩
+		@PathVariable Long userId, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+
+		Long currentUserId = customUserDetails.getUserId();
 		s3UploadService.saveFile(multipartFile, userId, currentUserId);
 		return new ResponseEntity<>(HttpStatus.OK);
 	}
