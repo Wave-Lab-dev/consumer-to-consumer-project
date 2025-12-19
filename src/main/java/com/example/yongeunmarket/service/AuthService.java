@@ -38,7 +38,7 @@ public class AuthService {
 
 		// 유저 정보 가져오기
 		CustomUserDetails userDetails = (CustomUserDetails)authentication.getPrincipal();
-		System.out.println("userdetails: " + userDetails.getUserId());
+
 		// JWT 토큰 생성
 		String jwt = jwtTokenProvider.createToken(userDetails);
 

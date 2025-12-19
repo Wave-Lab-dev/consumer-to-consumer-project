@@ -15,7 +15,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
-import com.example.yongeunmarket.repository.UserRepository;
+import com.example.yongeunmarket.entity.UserRole;
 import com.example.yongeunmarket.security.CustomUserDetails;
 
 import io.jsonwebtoken.Claims;
@@ -31,30 +31,27 @@ public class JwtTokenProvider {
 
 	private final Key key;
 	private final long tokenValidityInMilliseconds;
-	private final UserRepository userRepository;
 
 	public JwtTokenProvider(
 		@Value("${jwt.secret}") String secret,
-		@Value("${jwt.token-validity-in-seconds}") long tokenValidityInSeconds, UserRepository userRepository) {
+		@Value("${jwt.token-validity-in-seconds}") long tokenValidityInSeconds) {
 		this.key = Keys.hmacShaKeyFor(secret.getBytes());
 		this.tokenValidityInMilliseconds = tokenValidityInSeconds * 1000;
-		this.userRepository = userRepository;
 	}
 
 	/**
 	 * 사용자 정보를 이용해 JWT 토큰을 생성합니다.
 	 */
 	public String createToken(CustomUserDetails user) {
-		String authoritiy = "ROLE_" + user.getAuthorities();
+		String authority = "ROLE_" + user.getRole().name();
 
 		long now = (new Date()).getTime();
 		Date validity = new Date(now + this.tokenValidityInMilliseconds);
 
 		return Jwts.builder()
 			.setSubject(user.getUsername())
-			.claim("auth", authoritiy)
+			.claim("auth", authority)
 			.claim("userId", user.getUserId())
-			.claim("email", user.getUsername())
 			.signWith(key, SignatureAlgorithm.HS512)
 			.setExpiration(validity)
 			.compact();
@@ -80,7 +77,8 @@ public class JwtTokenProvider {
 				.collect(Collectors.toList());
 
 		Long userId = Long.parseLong(claims.get("userId").toString());
-		CustomUserDetails userDetails = new CustomUserDetails(userId);
+		UserRole userRole = UserRole.valueOf(claims.get("auth").toString().replace("ROLE_", ""));
+		CustomUserDetails userDetails = new CustomUserDetails(userId, userRole);
 
 		return new UsernamePasswordAuthenticationToken(userDetails, token, authorities);
 	}
