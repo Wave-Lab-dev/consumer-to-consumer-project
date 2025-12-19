@@ -49,8 +49,4 @@ public class User {
 	public void updatePassword(String password) {
 		this.password = password;
 	}
-
-	public enum UserRole {
-		ADMIN, BUYER, SELLER
-	}
 }

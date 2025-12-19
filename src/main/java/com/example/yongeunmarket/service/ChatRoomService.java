@@ -85,7 +85,7 @@ public class ChatRoomService {
 		if (message != null) {
 			messageDto = CreateChatRoomResDto.FirstMessageDto.builder()
 				.messageId(message.getId())
-				.senderId(message.getUser().getUserId())
+				.senderId(message.getUser().getId())
 				.content(message.getContent())
 				.createdAt(message.getCreatedAt())
 				.build();
@@ -93,8 +93,8 @@ public class ChatRoomService {
 
 		return CreateChatRoomResDto.builder()
 			.roomId(room.getId())
-			.buyerId(buyer.getUserId())
-			.sellerId(seller.getUserId())
+			.buyerId(buyer.getId())
+			.sellerId(seller.getId())
 			.productId(productId)
 			.createdAt(room.getCreatedAt())
 			.firstMessage(messageDto)
