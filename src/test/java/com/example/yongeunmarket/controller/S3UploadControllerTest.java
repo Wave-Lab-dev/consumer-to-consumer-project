@@ -6,26 +6,59 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.Collections;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.yongeunmarket.config.SecurityConfig;
+import com.example.yongeunmarket.jwt.JwtTokenProvider;
+import com.example.yongeunmarket.security.CustomUserDetails;
+import com.example.yongeunmarket.security.CustomUserDetailsService;
 import com.example.yongeunmarket.service.S3UploadService;
 
 @WebMvcTest(controllers = S3UploadController.class) //controller 레이어만 컨테이너에 추가
-	//@Import(SecurityConfig.class)
+@Import(SecurityConfig.class)
 class S3UploadControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
 
 	@MockitoBean
+	private JwtTokenProvider jwtTokenProvider;
+
+	@MockitoBean
+	private CustomUserDetails customUserDetails;
+
+	@MockitoBean
+	private CustomUserDetailsService customUserDetailsService;
+
+	@MockitoBean
 	private S3UploadService s3UploadService;
+
+	@BeforeEach
+	void setUp() {
+		CustomUserDetails userDetails = mock(CustomUserDetails.class);
+		given(userDetails.getUserId()).willReturn(1L);
+
+		SecurityContextHolder.getContext().setAuthentication(
+			new UsernamePasswordAuthenticationToken(
+				userDetails,
+				null,
+				Collections.emptyList()
+			)
+		);
+	}
 
 	@Test
 	void givenValidFile_whenSaveFile_thenUploadFileAndUpdateUser() throws Exception {
