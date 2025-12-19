@@ -20,20 +20,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectResult;
 import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("S3UploadService 단위 테스트")
 class S3UploadServiceTest {
 
 	@Mock
-	private AmazonS3 amazonS3;
+	private S3Client s3Client;
 
 	@Mock
 	private UserRepository userRepository;
@@ -52,6 +55,7 @@ class S3UploadServiceTest {
 	@BeforeEach
 	void setUp() {
 		ReflectionTestUtils.setField(s3UploadService, "bucket", TEST_BUCKET);
+
 	}
 
 	@Nested
@@ -73,15 +77,15 @@ class S3UploadServiceTest {
 
 			InputStream inputStream = new ByteArrayInputStream("test".getBytes());
 			given(multipartFile.getInputStream()).willReturn(inputStream);
-			given(amazonS3.putObject(anyString(), anyString(), any(InputStream.class), any(ObjectMetadata.class)))
-				.willReturn(new PutObjectResult());
+			given(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+				.willReturn(PutObjectResponse.builder().build());
 
 			// when
 			s3UploadService.saveFile(multipartFile, USER_ID, CURRENT_USER_ID);
 
 			// then
 			verify(userRepository).findById(USER_ID);
-			verify(amazonS3).putObject(eq(TEST_BUCKET), anyString(), any(InputStream.class), any(ObjectMetadata.class));
+			verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 			assertThat(user.getImageUrl()).isNotNull();
 			assertThat(user.getImageUrl()).startsWith("images/");
 			assertThat(user.getImageUrl()).endsWith(".jpg");
@@ -102,16 +106,18 @@ class S3UploadServiceTest {
 			given(multipartFile.getOriginalFilename()).willReturn(ORIGINAL_FILENAME);
 			given(multipartFile.getSize()).willReturn(1024L);
 			given(multipartFile.getContentType()).willReturn("image/jpeg");
-			given(multipartFile.getInputStream()).willReturn(new ByteArrayInputStream("test".getBytes()));
-			given(amazonS3.putObject(anyString(), anyString(), any(InputStream.class), any(ObjectMetadata.class)))
-				.willReturn(new PutObjectResult());
-
+			InputStream inputStream = new ByteArrayInputStream("test".getBytes());
+			given(multipartFile.getInputStream()).willReturn(inputStream);
+			given(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+				.willReturn(PutObjectResponse.builder().build());
+			given(s3Client.deleteObject(any(DeleteObjectRequest.class)))
+				.willReturn(DeleteObjectResponse.builder().build());
 			// when
 			s3UploadService.saveFile(multipartFile, USER_ID, CURRENT_USER_ID);
 
 			// then
-			verify(amazonS3).deleteObject(TEST_BUCKET, oldImageUrl); //삭제가 일어난다
-			verify(amazonS3).putObject(eq(TEST_BUCKET), anyString(), any(InputStream.class), any(ObjectMetadata.class));
+			verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
+			verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 			assertThat(user.getImageUrl()).isNotNull();
 			assertThat(user.getImageUrl()).startsWith("images/");
 			assertThat(user.getImageUrl()).endsWith(".jpg");
@@ -129,17 +135,15 @@ class S3UploadServiceTest {
 				.isInstanceOf(EntityNotFoundException.class)
 				.hasMessage("user 가 존재하지 않음");
 
-			verify(amazonS3, never()).putObject(anyString(), anyString(), any(InputStream.class),
-				any(ObjectMetadata.class));
+			verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 		}
 
 		@Test
-		@DisplayName("요청 사용자와 현재 사용자가 다르면 IllegalStateException을 던진다")
-		void saveFile_UnauthorizedUser_ThrowsException() {
+		@DisplayName("요청 사용자와 현재 사용자가 다르면 IllegalStateException 던진다")
+		void givenWrongUserId_whenSaveFile_thenIllegalStateException() {
 			// given
 			User user = User.builder().email("test@naver.com").password("password").build();
 			ReflectionTestUtils.setField(user, "id", 1L);
-			String oldImageUrl = "images/old-image.jpg";
 			Long differentUserId = 2L;
 			given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
 
@@ -148,13 +152,12 @@ class S3UploadServiceTest {
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessage("해당 user 에 권한이 없습니다");
 
-			verify(amazonS3, never()).putObject(anyString(), anyString(), any(InputStream.class),
-				any(ObjectMetadata.class));
+			verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 		}
 
 		@Test
 		@DisplayName("빈 파일이면 IllegalArgumentException을 던진다")
-		void saveFile_EmptyFile_ThrowsException() {
+		void givenEmptyFile_whenSaveFile_thenIllegalArgumentException() {
 			// given
 			User user = User.builder().email("test@naver.com").password("password").build();
 			ReflectionTestUtils.setField(user, "id", 1L);
@@ -166,8 +169,26 @@ class S3UploadServiceTest {
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessage("Image file is empty or invalid");
 
-			verify(amazonS3, never()).putObject(anyString(), anyString(), any(InputStream.class),
-				any(ObjectMetadata.class));
+			verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+		}
+
+		@Test
+		@DisplayName("확장자가 png, jpg, jpeg 중 하나가 아니라면 IllegalArgumentException 를 던진다")
+		void saveWrongExtension_EmptyFile_ThrowsException() {
+			// given
+			User user = User.builder().email("test@naver.com").password("password").build();
+			ReflectionTestUtils.setField(user, "id", 1L);
+			String wrongExtensionFile = "images/old-image.pdf";
+			given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+			given(multipartFile.isEmpty()).willReturn(false);
+			given(multipartFile.getOriginalFilename()).willReturn(wrongExtensionFile);
+
+			// when & then
+			assertThatThrownBy(() -> s3UploadService.saveFile(multipartFile, USER_ID, CURRENT_USER_ID))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("Invalid file extension");
+
+			verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 		}
 	}
 }

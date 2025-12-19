@@ -1,4 +1,4 @@
-package com.example.yongeunmarket.configs;
+package com.example.yongeunmarket.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
