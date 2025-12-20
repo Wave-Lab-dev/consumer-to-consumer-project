@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.yongeunmarket.dto.user.VerifyPasswordReqDto;
@@ -17,7 +18,9 @@ import com.example.yongeunmarket.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j(topic = "PasswordResetService")
 @Service
 @RequiredArgsConstructor
 public class PasswordResetService {
@@ -30,9 +33,12 @@ public class PasswordResetService {
 
 	private static int RESET_CODE_LENGTH = 6;// 재설정 코드 길이
 
+	public static final String CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
+
 	private final RedisTemplate<String, String> redisTemplate;
 	private final MailSender mailSender;
 	private final UserRepository userRepository;
+	private final PasswordEncoder passwordEncoder;
 
 	@Transactional
 	public void sendResetCode(Long userId) {
@@ -71,10 +77,15 @@ public class PasswordResetService {
 		if(!clientResetCode.equals(serverResetCode)) {
 			throw new IllegalStateException("재설정 코드가 일치하지 않습니다");
 		}
-		redisTemplate.delete(redisKey);
-
-		String newPassword = verifyPasswordReqDto.getNewPassword();
-		user.updatePassword(newPassword);
+		try{
+			String newPassword = verifyPasswordReqDto.getNewPassword();
+			user.updatePassword(passwordEncoder.encode(newPassword));
+		} catch (Exception ex) {
+			log.error("DB 트랜잭션 실패 오류 , 재설정 코드를 다시 발급받아 주세요. {}", ex.getMessage());
+			throw new IllegalStateException("database error {} !!", ex);
+		} finally {
+			redisTemplate.delete(redisKey);
+		}
 	}
 
 	private User getUserOrThrow(Long userId) {
@@ -88,7 +99,7 @@ public class PasswordResetService {
 	 */
 	private static String generate6CharCode() {
 
-		final String charset = "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
+		final String charset = CHARSET;
 		SecureRandom random = new SecureRandom();
 		StringBuilder code = new StringBuilder(RESET_CODE_LENGTH);//가변적인 문자열
 		for (int i = 0; i < RESET_CODE_LENGTH; i++) {
