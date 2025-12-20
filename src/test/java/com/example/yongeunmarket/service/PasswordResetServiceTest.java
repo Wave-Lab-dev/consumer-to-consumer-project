@@ -20,6 +20,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.example.yongeunmarket.dto.user.VerifyPasswordReqDto;
@@ -42,6 +43,9 @@ class PasswordResetServiceTest {
 
 	@Mock
 	private ValueOperations<String, String> valueOperations;
+
+	@Mock
+	private PasswordEncoder passwordEncoder;
 
 	@InjectMocks
 	private PasswordResetService passwordResetService;
@@ -182,7 +186,7 @@ class PasswordResetServiceTest {
 			when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 			when(valueOperations.get(redisKey)).thenReturn(RESET_CODE);
 			when(redisTemplate.delete(redisKey)).thenReturn(true);
-
+			when(passwordEncoder.encode(NEW_PASSWORD)).thenReturn(NEW_PASSWORD);
 			// when
 			passwordResetService.resetPassword(dto, USER_ID);
 
