@@ -35,8 +35,8 @@ public class ProductController {
 	@PostMapping
 	public ResponseEntity<CreateProductResDto> registerProduct(
 		@RequestBody @Valid CreateProductReqDto createProductReqDto,
-		@AuthenticationPrincipal CustomUserDetails customUserDetails) {
-
+		@AuthenticationPrincipal CustomUserDetails customUserDetails
+	) {
 		Long userId = customUserDetails.getUserId();
 		CreateProductResDto createProductResDto = productService.createProduct(createProductReqDto, userId);
 		return new ResponseEntity<>(createProductResDto, HttpStatus.CREATED);
@@ -59,8 +59,8 @@ public class ProductController {
 	@PatchMapping("/{productId}")
 	public ResponseEntity<UpdateProductResDto> modifyProduct(
 		@RequestBody @Valid UpdateProductReqDto updateProductReqDto, @PathVariable Long productId,
-		@AuthenticationPrincipal CustomUserDetails customUserDetails) {
-
+		@AuthenticationPrincipal CustomUserDetails customUserDetails
+	) {
 		Long userId = customUserDetails.getUserId();
 		UpdateProductResDto updateProductResDto = productService.updateProduct(updateProductReqDto, productId, userId);
 		return new ResponseEntity<>(updateProductResDto, HttpStatus.OK);
@@ -68,8 +68,8 @@ public class ProductController {
 
 	@DeleteMapping("/{productId}")
 	public ResponseEntity<Void> removeProduct(@PathVariable Long productId
-		, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-
+		, @AuthenticationPrincipal CustomUserDetails customUserDetails
+	) {
 		Long userId = customUserDetails.getUserId();
 		productService.deleteProduct(productId, userId);
 		return new ResponseEntity<>(HttpStatus.NO_CONTENT);
