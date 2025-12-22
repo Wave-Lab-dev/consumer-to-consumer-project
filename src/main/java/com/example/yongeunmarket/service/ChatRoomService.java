@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.yongeunmarket.dto.adminChat.GetAdminChatRoomDetailResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomCloseResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomDetailResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomListResDto;
@@ -241,6 +242,35 @@ public class ChatRoomService {
 				.createdAt(message.getCreatedAt())
 				.build())
 			.build();
+	}
+
+	public List<GetAdminChatRoomDetailResDto> findAllChatRoomsByFilter(ChatStatus status) {
+		// 1. 모든 채팅방 조회
+		List<ChatRoom> myChatRooms;
+
+		// 2. 필터링하여 채팅방 목록 가져오기
+		if (status == ChatStatus.OPEN) {
+			myChatRooms = chatRoomRepository.findAllByStatus(status.name());
+		} else {
+			myChatRooms = chatRoomRepository.findAll();
+		}
+
+		// 2. DTO 리스트로 변환
+		return myChatRooms.stream().map(chatRoom -> {
+
+			Long productId = Long.parseLong(chatRoom.getName());
+			Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
+
+			return GetAdminChatRoomDetailResDto.builder()
+				.roomId(chatRoom.getId())
+				.productId(product.getId())
+				.buyerId(chatRoom.getBuyer().getId())
+				.sellerId(product.getUser().getId())
+				.status(chatRoom.getStatus())
+				.createdAt(chatRoom.getCreatedAt())
+				.build();
+		}).collect(Collectors.toList());
 	}
 
 	// --- 기존 방 응답 변환 로직 ---

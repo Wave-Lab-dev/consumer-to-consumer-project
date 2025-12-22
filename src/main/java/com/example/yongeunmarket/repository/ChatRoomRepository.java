@@ -22,4 +22,6 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 	// 내가 참여 중인 모든 채팅방 조회
 	@Query("SELECT cp.chatRoom FROM ChatParticipant cp WHERE cp.user.id = :userId")
 	List<ChatRoom> findMyChatRooms(@Param("userId") Long userId);
+
+	List<ChatRoom> findAllByStatus(String status);
 }
