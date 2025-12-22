@@ -1,8 +1,8 @@
 package com.example.yongeunmarket.dto.adminChat;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
-import com.example.yongeunmarket.entity.ChatStatus;
+import com.example.yongeunmarket.dto.chat.ChatRoomDetailResDto;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -12,8 +12,18 @@ import lombok.Getter;
 public class GetAdminChatRoomDetailResDto {
 	private Long roomId;
 	private Long productId;
-	private Long buyerId;
 	private Long sellerId;
-	private ChatStatus status;
-	private LocalDateTime createdAt;
+	private Long buyerId;
+	private String status;
+	private List<ChatRoomDetailResDto.ChatMessageDetailDto> messages; // 대화 내역 리스트
+
+	@Getter
+	@Builder
+	public static class ChatMessageDetailDto {
+		private Long messageId;
+		private Long senderId;
+		private String content;
+		private String createdAt;
+		private boolean isRead;
+	}
 }

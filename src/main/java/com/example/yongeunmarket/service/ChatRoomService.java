@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.yongeunmarket.dto.adminChat.GetAdminChatRoomDetailResDto;
+import com.example.yongeunmarket.dto.adminChat.GetAdminChatRoomInfoResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomCloseResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomDetailResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomListResDto;
@@ -244,7 +245,7 @@ public class ChatRoomService {
 			.build();
 	}
 
-	public List<GetAdminChatRoomDetailResDto> findAllChatRoomsByFilter(ChatStatus status) {
+	public List<GetAdminChatRoomInfoResDto> findAllChatRoomsByFilter(ChatStatus status) {
 		// 1. 모든 채팅방 조회
 		List<ChatRoom> myChatRooms;
 
@@ -262,7 +263,7 @@ public class ChatRoomService {
 			Product product = productRepository.findById(productId)
 				.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
 
-			return GetAdminChatRoomDetailResDto.builder()
+			return GetAdminChatRoomInfoResDto.builder()
 				.roomId(chatRoom.getId())
 				.productId(product.getId())
 				.buyerId(chatRoom.getBuyer().getId())
@@ -271,6 +272,50 @@ public class ChatRoomService {
 				.createdAt(chatRoom.getCreatedAt())
 				.build();
 		}).collect(Collectors.toList());
+	}
+
+	public GetAdminChatRoomDetailResDto findChatRoomDetailByRoomId(Long roomId) {
+		// 1. 채팅방 조회
+		ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다."));
+
+		// 2. 상품 및 판매자/구매자 정보 조회
+		Long productId = Long.parseLong(chatRoom.getName());
+		Product product = productRepository.findById(productId)
+			.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
+
+		User seller = product.getUser();
+		User buyer = chatRoom.getBuyer();
+
+		// 4. 메시지 목록 조회
+		List<ChatMessage> messages = chatMessageRepository.findAllByChatRoomIdOrderByCreatedAtAsc(roomId);
+
+		// 5. 메시지 DTO 리스트 변환
+		List<ChatRoomDetailResDto.ChatMessageDetailDto> messageDtos = messages.stream()
+			.map(msg -> {
+				User recipient = msg.getUser().getId().equals(buyer.getId()) ? seller : buyer;
+
+				boolean isRead = readStatusRepository.findByChatMessageAndUser(msg, recipient).isPresent();
+
+				return ChatRoomDetailResDto.ChatMessageDetailDto.builder()
+					.messageId(msg.getId())
+					.senderId(msg.getUser().getId())
+					.content(msg.getContent())
+					.createdAt(msg.getCreatedAt().toString())
+					.isRead(isRead)
+					.build();
+			})
+			.collect(Collectors.toList());
+
+		// 6. 결과 반환
+		return GetAdminChatRoomDetailResDto.builder()
+			.roomId(chatRoom.getId())
+			.productId(productId)
+			.sellerId(seller.getId())
+			.buyerId(buyer.getId())
+			.status(chatRoom.getStatus().name())
+			.messages(messageDtos)
+			.build();
 	}
 
 	// --- 기존 방 응답 변환 로직 ---
