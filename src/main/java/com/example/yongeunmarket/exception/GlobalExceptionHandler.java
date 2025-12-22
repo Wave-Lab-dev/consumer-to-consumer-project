@@ -45,4 +45,11 @@ public class GlobalExceptionHandler {
 			.body(CommonResponse.of(ErrorCode.RESOURCE_NOT_FOUND));
 	}
 
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<CommonResponse<Object>> handleServerError(Exception ex) {
+		return ResponseEntity
+			.status(INTERNAL_SERVER_ERROR)
+			.body(CommonResponse.of(ErrorCode.INTERNAL_SERVER_ERROR));
+	}
+
 }
