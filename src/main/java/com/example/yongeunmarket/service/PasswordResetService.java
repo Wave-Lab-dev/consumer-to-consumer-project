@@ -15,12 +15,12 @@ import org.springframework.stereotype.Service;
 
 import com.example.yongeunmarket.dto.user.VerifyPasswordReqDto;
 import com.example.yongeunmarket.entity.User;
-import com.example.yongeunmarket.exception.AttemptExpiredException;
-import com.example.yongeunmarket.exception.EmailSendFailedException;
-import com.example.yongeunmarket.exception.PasswordUpdateFailedException;
-import com.example.yongeunmarket.exception.ResetCodeExpiredException;
-import com.example.yongeunmarket.exception.ResetCodeMismatchException;
-import com.example.yongeunmarket.exception.TooManyAttemptsException;
+import com.example.yongeunmarket.exception.DataProcessingException;
+import com.example.yongeunmarket.exception.user.AttemptExpiredException;
+import com.example.yongeunmarket.exception.user.EmailSendFailedException;
+import com.example.yongeunmarket.exception.user.ResetCodeExpiredException;
+import com.example.yongeunmarket.exception.user.ResetCodeMismatchException;
+import com.example.yongeunmarket.exception.user.TooManyAttemptsException;
 import com.example.yongeunmarket.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -45,8 +45,6 @@ public class PasswordResetService {
 	private static final int MAX_ATTEMPTS = 5; // 최대 시도 횟수
 	private static final int RESET_CODE_LENGTH = 6;// 재설정 코드 길이
 	public static final String INIT_ATTEMPT = "1";
-
-	public static final String CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
 
 	public static final String CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
 
@@ -94,7 +92,7 @@ public class PasswordResetService {
 			user.updatePassword(passwordEncoder.encode(newPassword));
 		} catch (Exception ex) {
 			log.error("DB 트랜잭션 실패 오류 , 재설정 코드를 다시 발급받아 주세요. {}", ex.getMessage());
-			throw new PasswordUpdateFailedException("비밀번호 업데이트에 실패 했습니다!");
+			throw new DataProcessingException("DB 트랜잭션 실패 오류");
 		} finally {
 			redisTemplate.delete(resetCodeKey);
 			redisTemplate.delete(attemptKey);
@@ -126,15 +124,6 @@ public class PasswordResetService {
 		)) {
 			cacheWithTTL(attemptKey, String.valueOf(attempts + 1));
 			throw new ResetCodeMismatchException("재설정 코드가 일치하지 않습니다");
-		}
-		try{
-			String newPassword = verifyPasswordReqDto.getNewPassword();
-			user.updatePassword(passwordEncoder.encode(newPassword));
-		} catch (Exception ex) {
-			log.error("DB 트랜잭션 실패 오류 , 재설정 코드를 다시 발급받아 주세요. {}", ex.getMessage());
-			throw new IllegalStateException("database error {} !!", ex);
-		} finally {
-			redisTemplate.delete(redisKey);
 		}
 	}
 

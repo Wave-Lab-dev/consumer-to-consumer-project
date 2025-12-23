@@ -25,11 +25,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.example.yongeunmarket.dto.user.VerifyPasswordReqDto;
 import com.example.yongeunmarket.entity.User;
-import com.example.yongeunmarket.exception.AttemptExpiredException;
-import com.example.yongeunmarket.exception.EmailSendFailedException;
-import com.example.yongeunmarket.exception.ResetCodeExpiredException;
-import com.example.yongeunmarket.exception.ResetCodeMismatchException;
-import com.example.yongeunmarket.exception.TooManyAttemptsException;
+import com.example.yongeunmarket.exception.user.AttemptExpiredException;
+import com.example.yongeunmarket.exception.user.EmailSendFailedException;
+import com.example.yongeunmarket.exception.user.ResetCodeExpiredException;
+import com.example.yongeunmarket.exception.user.ResetCodeMismatchException;
+import com.example.yongeunmarket.exception.user.TooManyAttemptsException;
 import com.example.yongeunmarket.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;

@@ -10,6 +10,10 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.yongeunmarket.entity.User;
+import com.example.yongeunmarket.exception.AccessDeniedException;
+import com.example.yongeunmarket.exception.DataProcessingException;
+import com.example.yongeunmarket.exception.upload.FileSizeExceededException;
+import com.example.yongeunmarket.exception.upload.InvalidFileException;
 import com.example.yongeunmarket.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -32,6 +36,7 @@ public class S3UploadService {
 
 	private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png");
 	private static final String IMAGES_PREFIX = "images/";
+	private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 	@Value("${spring.cloud.aws.s3.bucket}")
 	private String bucket;
@@ -42,12 +47,10 @@ public class S3UploadService {
 		User user = getUserOrThrow(requestedUserId);
 
 		if (!currentUserId.equals(user.getId())) {
-			throw new IllegalStateException("해당 user 에 권한이 없습니다");    // 로그인한 user 가 아닌경우 403
+			throw new AccessDeniedException("해당 user 에 권한이 없습니다");    // 로그인한 user 가 아닌경우 403
 		}
 
-		if (multipartFile.isEmpty() || multipartFile.getOriginalFilename() == null) {
-			throw new IllegalArgumentException("Image file is empty or invalid"); //404
-		}
+		verifyInputFileOrThrow(multipartFile);
 
 		if (StringUtils.hasText(user.getImageUrl())) {
 			deleteObject(user.getImageUrl());
@@ -71,11 +74,11 @@ public class S3UploadService {
 			user.updateImageUrl(key);    //서버가 bucket 을 저장하고 있으으로, pull path 가 아닌 key 를 저장한다.
 		} catch (IOException ex) {
 			log.error("InputStream 실패 오류 {}", ex.getMessage());
-			throw new IllegalStateException("multipart file upload failed !!");
+			throw new InvalidFileException("multipart file upload failed !!");
 		} catch (Exception ex) {
 			deleteObject(key);  //보상 트랜잭션 처리
 			log.error("DB 트랜잭션 실패 오류 {}", ex.getMessage());
-			throw new IllegalStateException("database error !!");
+			throw new DataProcessingException("database error !!");
 		}
 	}
 
@@ -99,17 +102,35 @@ public class S3UploadService {
 
 		int lastDotIndex = filename.lastIndexOf('.');
 		if (lastDotIndex == -1) {
-			throw new IllegalArgumentException("Invalid file extension");
+			throw new InvalidFileException("확장자가 일치하지 않습니다");
 		}
 		String extension = filename.substring(lastDotIndex + 1);
-		if (!ALLOWED_EXTENSIONS.contains(extension)) // 확장자가 jpg, jpeg, png 가 아닌 경우
-			throw new IllegalArgumentException("Invalid file extension");
+		if (!ALLOWED_EXTENSIONS.contains(extension)) { // 확장자가 jpg, jpeg, png 가 아닌 경우
+			log.error("확장자가 일치하지 않습니다 !{}", extension);
+			throw new InvalidFileException("확장자가 일치하지 않습니다");
+		}
 		return extension;
-}
+	}
 
-private User getUserOrThrow(Long userId) {
+	/**
+	 * multipartFile
+	 * @param multipartFile : multpart
+	 */
+	private static void verifyInputFileOrThrow(MultipartFile multipartFile) {
+		if (multipartFile.isEmpty() || multipartFile.getOriginalFilename() == null) {
+			log.error("이미지 파일이 비어있거나, 타당하지 않음!");
+			throw new InvalidFileException("이미지 파일이 비어있거나, 타당하지 않음!"); //404
+		}
+		// 파일 크기 검증
+		if (multipartFile.getSize() > MAX_FILE_SIZE) {
+			log.error("파일 크기는 10MB를 초과할 수 없습니다. (현재: {}MB)", (multipartFile.getSize() / 1024 / 1024));
+			throw new FileSizeExceededException("파일 크기는 10MB를 초과할 수 없습니다!");
+		}
+	}
 
-	return userRepository.findById(userId).orElseThrow(
-		() -> new EntityNotFoundException("user 가 존재하지 않음"));
-}
+	private User getUserOrThrow(Long userId) {
+
+		return userRepository.findById(userId).orElseThrow(
+			() -> new EntityNotFoundException("user 가 존재하지 않음"));
+	}
 }
