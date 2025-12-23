@@ -12,32 +12,32 @@ import lombok.Getter;
  * 실패 라면 status, message 를 반환
  */
 @Getter
-public class CommonResponse<T> {
+public class CommonErrorResponse<T> {
 
 	private final HttpStatus status;
 	private final String message;
 	private final T data;
 
-	public CommonResponse(HttpStatus status, String message, T data) {
+	public CommonErrorResponse(HttpStatus status, String message, T data) {
 		this.status = status;
 		this.message = message;
 		this.data = data;
 	}
 
 	/**
-	 * 성공 응답 처리
-	 * @param code : 성공 BaseCode Enum 객체
+	 * 실패 응답 처리
+	 * @param code : 실패 BaseCode Enum 객체
 	 * @param data : 어떤 응답 dto 인지
 	 */
-	public static <T> CommonResponse<T> of(BaseCode code, T data) {
-		return new CommonResponse<>(code.getStatus(), code.getMessage(), data);
+	public static <T> CommonErrorResponse<T> of(BaseCode code, T data) {
+		return new CommonErrorResponse<>(code.getStatus(), code.getMessage(), data);
 	}
 
 	/**
 	 * 실패 응답 처리
 	 * @param code : 실패 BaseCode Enum 객체
 	 */
-	public static <T> CommonResponse<T> of(BaseCode code) {
+	public static <T> CommonErrorResponse<T> of(BaseCode code) {
 		return of(code, null);
 	}
 }

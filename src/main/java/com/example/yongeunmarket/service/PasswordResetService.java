@@ -48,6 +48,8 @@ public class PasswordResetService {
 
 	public static final String CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
 
+	public static final String CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
+
 	private final RedisTemplate<String, String> redisTemplate;
 	private final MailSender mailSender;
 	private final UserRepository userRepository;
@@ -124,6 +126,15 @@ public class PasswordResetService {
 		)) {
 			cacheWithTTL(attemptKey, String.valueOf(attempts + 1));
 			throw new ResetCodeMismatchException("재설정 코드가 일치하지 않습니다");
+		}
+		try{
+			String newPassword = verifyPasswordReqDto.getNewPassword();
+			user.updatePassword(passwordEncoder.encode(newPassword));
+		} catch (Exception ex) {
+			log.error("DB 트랜잭션 실패 오류 , 재설정 코드를 다시 발급받아 주세요. {}", ex.getMessage());
+			throw new IllegalStateException("database error {} !!", ex);
+		} finally {
+			redisTemplate.delete(redisKey);
 		}
 	}
 
