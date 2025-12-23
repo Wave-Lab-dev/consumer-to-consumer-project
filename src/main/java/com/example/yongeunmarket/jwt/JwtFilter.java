@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.example.yongeunmarket.exception.CustomJwtException;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,14 +31,28 @@ public class JwtFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
 		FilterChain filterChain) throws ServletException, IOException {
 
-		String jwt = resolveToken(request);
+		try {
+			// 1. 토큰 추출
+			String jwt = resolveToken(request);
 
-		if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
-			Authentication authentication = jwtTokenProvider.getAuthentication(jwt);
-			SecurityContextHolder.getContext().setAuthentication(authentication);
+			// 2. 토큰이 있는 경우 검증 및 인증 설정
+			if (StringUtils.hasText(jwt)) {
+				jwtTokenProvider.validateToken(jwt);
+				// 검증 성공 시 인증 정보 설정
+				Authentication authentication = jwtTokenProvider.getAuthentication(jwt);
+				SecurityContextHolder.getContext().setAuthentication(authentication);
+			}
+
+			// 3. 다음 필터로 진행
+			filterChain.doFilter(request, response);
+
+		} catch (CustomJwtException e) {
+			// JWT 예외 발생 시 request에 예외 정보 저장
+			request.setAttribute("exception", e.getErrorCode());
+
+			// 필터 체인 계속 진행 (AuthenticationEntryPoint에서 처리)
+			filterChain.doFilter(request, response);
 		}
-
-		filterChain.doFilter(request, response);
 	}
 
 	/**

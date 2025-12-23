@@ -24,8 +24,8 @@ public class S3UploadController {
 
 	@PostMapping("/{userId}/upload")
 	public ResponseEntity<Void> uploadFile(@RequestPart("multipartFile") MultipartFile multipartFile,
-		@PathVariable Long userId, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-
+		@PathVariable Long userId, @AuthenticationPrincipal CustomUserDetails customUserDetails
+	) {
 		Long currentUserId = customUserDetails.getUserId();
 		s3UploadService.saveFile(multipartFile, userId, currentUserId);
 		return new ResponseEntity<>(HttpStatus.OK);
