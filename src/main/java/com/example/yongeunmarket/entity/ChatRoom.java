@@ -27,8 +27,6 @@ public class ChatRoom extends BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	// 더 이상 name에 productId를 억지로 넣지 않습니다.
-	// 필요하다면 화면 표시용 이름으로 쓰거나, 제거해도 무방합니다.
 	@Column(nullable = false)
 	private String roomName;
 
@@ -39,17 +37,14 @@ public class ChatRoom extends BaseEntity {
 	@Column(name = "close_at")
 	private LocalDateTime closedAt;
 
-	// ✅ [핵심 변경] Product와 직접 연관관계 매핑
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "product_id", nullable = false)
 	private Product product;
 
-	// ✅ [핵심 변경] Seller 명시
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "seller_id", nullable = false)
 	private User seller;
 
-	// ✅ [핵심 변경] Buyer 명시
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "buyer_id", nullable = false)
 	private User buyer;
