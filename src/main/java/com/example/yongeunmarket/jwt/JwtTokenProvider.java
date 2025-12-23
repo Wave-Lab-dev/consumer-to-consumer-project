@@ -49,7 +49,7 @@ public class JwtTokenProvider {
 	 * 사용자 정보를 이용해 JWT 토큰을 생성합니다.
 	 */
 	public String createToken(CustomUserDetails user) {
-		String authority = "ROLE_" + user.getRole().name();
+		String authority = user.getRole().getAuthority();
 
 		long now = (new Date()).getTime();
 		Date validity = new Date(now + this.tokenValidityInMilliseconds);
@@ -123,7 +123,7 @@ public class JwtTokenProvider {
 		} catch (IllegalArgumentException e) {
 			log.error("토큰이 비어있습니다.");
 			throw new CustomJwtException(ErrorCode.TOKEN_EMPTY);
-			
+
 		} catch (Exception e) {
 			log.error("유효하지 않은 토큰입니다");
 			throw new CustomJwtException(ErrorCode.TOKEN_INVALID);
