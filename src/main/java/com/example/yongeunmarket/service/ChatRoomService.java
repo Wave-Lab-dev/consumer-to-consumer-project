@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -253,7 +254,7 @@ public class ChatRoomService {
 		if (status == ChatStatus.OPEN) {
 			myChatRooms = chatRoomRepository.findAllByStatus(status.name());
 		} else {
-			myChatRooms = chatRoomRepository.findAll();
+			myChatRooms = chatRoomRepository.findAll(Sort.by("status").ascending());
 		}
 
 		// 2. DTO 리스트로 변환
