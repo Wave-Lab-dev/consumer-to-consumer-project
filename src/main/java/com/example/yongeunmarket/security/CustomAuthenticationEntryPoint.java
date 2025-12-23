@@ -6,7 +6,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
-import com.example.yongeunmarket.dto.CommonResponse;
+import com.example.yongeunmarket.dto.CommonErrorResponse;
 import com.example.yongeunmarket.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -38,7 +38,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
 		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
 		// JSON 응답 생성
-		CommonResponse<Object> errorResponse = CommonResponse.of(errorCode);
+		CommonErrorResponse<Object> errorResponse = CommonErrorResponse.of(errorCode);
 
 		response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
 	}

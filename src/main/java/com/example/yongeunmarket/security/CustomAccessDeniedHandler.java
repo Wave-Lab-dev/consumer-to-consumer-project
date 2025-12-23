@@ -6,7 +6,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
-import com.example.yongeunmarket.dto.CommonResponse;
+import com.example.yongeunmarket.dto.CommonErrorResponse;
 import com.example.yongeunmarket.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -31,7 +31,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 		response.setContentType("application/json;charset=UTF-8");
 		response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-		CommonResponse<Object> errorResponse = CommonResponse.of(ErrorCode.FORBIDDEN);
+		CommonErrorResponse<Object> errorResponse = CommonErrorResponse.of(ErrorCode.FORBIDDEN);
 
 		response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
 	}
