@@ -21,6 +21,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.yongeunmarket.entity.User;
+import com.example.yongeunmarket.exception.AccessDeniedException;
+import com.example.yongeunmarket.exception.upload.InvalidFileException;
 import com.example.yongeunmarket.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -63,7 +65,7 @@ class S3UploadServiceTest {
 	class SaveFileTest {
 
 		@Test
-		@DisplayName("정상적으로 파일을 업로드하고 User 엔티티를 업데이트한다")
+		@DisplayName("성공: 정상적으로 파일을 업로드하고 User 엔티티를 업데이트한다")
 		void givenValidFile_whenSaveFile_thenUploadFileAndUpdateUser() throws IOException {
 
 			// given
@@ -92,7 +94,7 @@ class S3UploadServiceTest {
 		}
 
 		@Test
-		@DisplayName("기존 이미지가 있으면 삭제 후 새 이미지를 업로드한다")
+		@DisplayName("성공: 기존 이미지가 있으면 삭제 후 새 이미지를 업로드한다")
 		void givenUserWithExistingImage_whenSaveFile_thenDeleteOldImageAndUploadNewImage() throws IOException {
 
 			// given
@@ -125,7 +127,7 @@ class S3UploadServiceTest {
 		}
 
 		@Test
-		@DisplayName("존재하지 않는 사용자 ID로 요청하면 EntityNotFoundException을 던진다")
+		@DisplayName("실패: 존재하지 않는 사용자 ID로 요청")
 		void givenNonExistentUserId_whenSaveFile_thenThrowEntityNotFoundException() {
 			// given
 			given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
@@ -139,7 +141,7 @@ class S3UploadServiceTest {
 		}
 
 		@Test
-		@DisplayName("요청 사용자와 현재 사용자가 다르면 IllegalStateException 던진다")
+		@DisplayName("실패: 사용자와 현재 사용자가 다름")
 		void givenWrongUserId_whenSaveFile_thenIllegalStateException() {
 			// given
 			User user = User.builder().email("test@naver.com").password("password").build();
@@ -149,14 +151,14 @@ class S3UploadServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> s3UploadService.saveFile(multipartFile, USER_ID, differentUserId))
-				.isInstanceOf(IllegalStateException.class)
+				.isInstanceOf(AccessDeniedException.class)
 				.hasMessage("해당 user 에 권한이 없습니다");
 
 			verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 		}
 
 		@Test
-		@DisplayName("빈 파일이면 IllegalArgumentException을 던진다")
+		@DisplayName("실패: 파일이 비어있음")
 		void givenEmptyFile_whenSaveFile_thenIllegalArgumentException() {
 			// given
 			User user = User.builder().email("test@naver.com").password("password").build();
@@ -166,14 +168,12 @@ class S3UploadServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> s3UploadService.saveFile(multipartFile, USER_ID, CURRENT_USER_ID))
-				.isInstanceOf(IllegalArgumentException.class)
-				.hasMessage("Image file is empty or invalid");
-
+				.isInstanceOf(InvalidFileException.class);
 			verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 		}
 
 		@Test
-		@DisplayName("확장자가 png, jpg, jpeg 중 하나가 아니라면 IllegalArgumentException 를 던진다")
+		@DisplayName("실패: 확장자가 png, jpg, jpeg 가 아니다.")
 		void saveWrongExtension_EmptyFile_ThrowsException() {
 			// given
 			User user = User.builder().email("test@naver.com").password("password").build();
@@ -185,9 +185,7 @@ class S3UploadServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> s3UploadService.saveFile(multipartFile, USER_ID, CURRENT_USER_ID))
-				.isInstanceOf(IllegalArgumentException.class)
-				.hasMessage("Invalid file extension");
-
+				.isInstanceOf(InvalidFileException.class);
 			verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 		}
 	}
