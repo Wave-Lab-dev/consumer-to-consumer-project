@@ -16,19 +16,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import com.example.yongeunmarket.entity.UserRole;
-import com.example.yongeunmarket.exception.CustomJwtException;
-import com.example.yongeunmarket.exception.ErrorCode;
 import com.example.yongeunmarket.security.CustomUserDetails;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.SignatureException;
 
 @Component
 public class JwtTokenProvider {
@@ -49,7 +43,7 @@ public class JwtTokenProvider {
 	 * 사용자 정보를 이용해 JWT 토큰을 생성합니다.
 	 */
 	public String createToken(CustomUserDetails user) {
-		String authority = user.getRole().getAuthority();
+		String authority = "ROLE_" + user.getRole().name();
 
 		long now = (new Date()).getTime();
 		Date validity = new Date(now + this.tokenValidityInMilliseconds);
@@ -99,35 +93,11 @@ public class JwtTokenProvider {
 	 */
 	public boolean validateToken(String token) {
 		try {
-			Jwts.parserBuilder()
-				.setSigningKey(key)
-				.build()
-				.parseClaimsJws(token);
+			Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
 			return true;
-		} catch (SignatureException e) {
-			log.error("JWT 서명이 유효하지 않습니다.");
-			throw new CustomJwtException(ErrorCode.TOKEN_INVALID);
-
-		} catch (MalformedJwtException e) {
-			log.error("잘못된 형식의 토큰입니다.");
-			throw new CustomJwtException(ErrorCode.TOKEN_INVALID);
-
-		} catch (ExpiredJwtException e) {
-			log.error("JWT 토큰이 만료되었습니다.");
-			throw new CustomJwtException(ErrorCode.TOKEN_EXPIRED);
-
-		} catch (UnsupportedJwtException e) {
-			log.error("지원되지 않는 JWT 유형입니다.");
-			throw new CustomJwtException(ErrorCode.TOKEN_INVALID);
-
-		} catch (IllegalArgumentException e) {
-			log.error("토큰이 비어있습니다.");
-			throw new CustomJwtException(ErrorCode.TOKEN_EMPTY);
-
-		} catch (Exception e) {
-			log.error("유효하지 않은 토큰입니다");
-			throw new CustomJwtException(ErrorCode.TOKEN_INVALID);
+		} catch (JwtException | IllegalArgumentException e) {
+			log.warn("잘못된 JWT 토큰: {}", e.getMessage());
+			return false;
 		}
-
 	}
 }
