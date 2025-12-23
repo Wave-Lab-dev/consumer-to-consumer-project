@@ -10,6 +10,8 @@ import com.example.yongeunmarket.dto.auth.LoginReqDto;
 import com.example.yongeunmarket.dto.auth.LoginResDto;
 import com.example.yongeunmarket.dto.auth.SignupReqDto;
 import com.example.yongeunmarket.entity.User;
+import com.example.yongeunmarket.exception.AuthErrorCode;
+import com.example.yongeunmarket.exception.BusinessException;
 import com.example.yongeunmarket.jwt.JwtTokenProvider;
 import com.example.yongeunmarket.repository.UserRepository;
 import com.example.yongeunmarket.security.CustomUserDetails;
@@ -50,7 +52,7 @@ public class AuthService {
 		boolean existsByEmail = userRepository.existsByEmail(signupReqDto.getEmail());
 
 		if (existsByEmail) {
-			throw new IllegalStateException("email exists");
+			throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
 		}
 
 		//비밀번호 암호화
