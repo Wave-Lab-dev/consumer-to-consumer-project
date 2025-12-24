@@ -222,15 +222,15 @@ public class ChatRoomService {
 		// 2. DTO 리스트로 변환
 		return myChatRooms.stream().map(chatRoom -> {
 
-			Long productId = Long.parseLong(chatRoom.getName());
-			Product product = productRepository.findById(productId)
-				.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
+			Product product = chatRoom.getProduct();
+			User seller = chatRoom.getSeller();
+			User buyer = chatRoom.getBuyer();
 
 			return GetAdminChatRoomInfoResDto.builder()
 				.roomId(chatRoom.getId())
 				.productId(product.getId())
-				.buyerId(chatRoom.getBuyer().getId())
-				.sellerId(product.getUser().getId())
+				.buyerId(buyer.getId())
+				.sellerId(seller.getId())
 				.status(chatRoom.getStatus())
 				.createdAt(chatRoom.getCreatedAt())
 				.build();
@@ -242,12 +242,8 @@ public class ChatRoomService {
 		ChatRoom chatRoom = chatRoomRepository.findById(roomId)
 			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다."));
 
-		// 2. 상품 및 판매자/구매자 정보 조회
-		Long productId = Long.parseLong(chatRoom.getName());
-		Product product = productRepository.findById(productId)
-			.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
-
-		User seller = product.getUser();
+		Product product = chatRoom.getProduct();
+		User seller = chatRoom.getSeller();
 		User buyer = chatRoom.getBuyer();
 
 		// 4. 메시지 목록 조회
@@ -273,7 +269,7 @@ public class ChatRoomService {
 		// 6. 결과 반환
 		return GetAdminChatRoomDetailResDto.builder()
 			.roomId(chatRoom.getId())
-			.productId(productId)
+			.productId(product.getId())
 			.sellerId(seller.getId())
 			.buyerId(buyer.getId())
 			.status(chatRoom.getStatus().name())
