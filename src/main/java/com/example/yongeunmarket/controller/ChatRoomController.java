@@ -78,6 +78,5 @@ public class ChatRoomController {
 
 		return ResponseEntity.status(HttpStatus.OK).body(response);
 	}
-
 }
 

@@ -10,10 +10,11 @@ import lombok.Getter;
 public class ChatRoomDetailResDto {
 	private Long roomId;
 	private Long productId;
+	private String productName;
 	private Long sellerId;
 	private Long buyerId;
 	private String status;
-	private List<ChatMessageDetailDto> messages; // 대화 내역 리스트
+	private List<ChatMessageDetailDto> messages;
 
 	@Getter
 	@Builder
