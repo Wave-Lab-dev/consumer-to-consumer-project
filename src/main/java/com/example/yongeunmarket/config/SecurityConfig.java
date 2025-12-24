@@ -34,6 +34,7 @@ public class SecurityConfig {
 			.csrf(AbstractHttpConfigurer::disable)
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers("/api/auth/**").permitAll()
+				.requestMatchers("/api/admin/**").hasRole("ADMIN")
 				.requestMatchers("/ws/**").permitAll() // 웹 소켓 연결시 url 시큐리티에서 허용
 				.anyRequest().authenticated()
 			)

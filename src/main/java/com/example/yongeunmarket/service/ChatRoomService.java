@@ -5,9 +5,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.yongeunmarket.dto.adminChat.GetAdminChatRoomDetailResDto;
+import com.example.yongeunmarket.dto.adminChat.GetAdminChatRoomInfoResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomCloseResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomDetailResDto;
 import com.example.yongeunmarket.dto.chat.ChatRoomListResDto;
@@ -202,6 +205,79 @@ public class ChatRoomService {
 				.content(message.getContent())
 				.createdAt(message.getCreatedAt())
 				.build())
+			.build();
+	}
+
+	public List<GetAdminChatRoomInfoResDto> findAllChatRoomsByFilter(ChatStatus status) {
+		// 1. 모든 채팅방 조회
+		List<ChatRoom> myChatRooms;
+
+		// 2. 필터링하여 채팅방 목록 가져오기
+		if (status == ChatStatus.OPEN) {
+			myChatRooms = chatRoomRepository.findAllByStatus(status.name());
+		} else {
+			myChatRooms = chatRoomRepository.findAll(Sort.by("status").ascending());
+		}
+
+		// 2. DTO 리스트로 변환
+		return myChatRooms.stream().map(chatRoom -> {
+
+			Long productId = Long.parseLong(chatRoom.getName());
+			Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
+
+			return GetAdminChatRoomInfoResDto.builder()
+				.roomId(chatRoom.getId())
+				.productId(product.getId())
+				.buyerId(chatRoom.getBuyer().getId())
+				.sellerId(product.getUser().getId())
+				.status(chatRoom.getStatus())
+				.createdAt(chatRoom.getCreatedAt())
+				.build();
+		}).collect(Collectors.toList());
+	}
+
+	public GetAdminChatRoomDetailResDto findChatRoomDetailByRoomId(Long roomId) {
+		// 1. 채팅방 조회
+		ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다."));
+
+		// 2. 상품 및 판매자/구매자 정보 조회
+		Long productId = Long.parseLong(chatRoom.getName());
+		Product product = productRepository.findById(productId)
+			.orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다."));
+
+		User seller = product.getUser();
+		User buyer = chatRoom.getBuyer();
+
+		// 4. 메시지 목록 조회
+		List<ChatMessage> messages = chatMessageRepository.findAllByChatRoomIdOrderByCreatedAtAsc(roomId);
+
+		// 5. 메시지 DTO 리스트 변환
+		List<ChatRoomDetailResDto.ChatMessageDetailDto> messageDtos = messages.stream()
+			.map(msg -> {
+				User recipient = msg.getUser().getId().equals(buyer.getId()) ? seller : buyer;
+
+				boolean isRead = readStatusRepository.findByChatMessageAndUser(msg, recipient).isPresent();
+
+				return ChatRoomDetailResDto.ChatMessageDetailDto.builder()
+					.messageId(msg.getId())
+					.senderId(msg.getUser().getId())
+					.content(msg.getContent())
+					.createdAt(msg.getCreatedAt().toString())
+					.isRead(isRead)
+					.build();
+			})
+			.collect(Collectors.toList());
+
+		// 6. 결과 반환
+		return GetAdminChatRoomDetailResDto.builder()
+			.roomId(chatRoom.getId())
+			.productId(productId)
+			.sellerId(seller.getId())
+			.buyerId(buyer.getId())
+			.status(chatRoom.getStatus().name())
+			.messages(messageDtos)
 			.build();
 	}
 

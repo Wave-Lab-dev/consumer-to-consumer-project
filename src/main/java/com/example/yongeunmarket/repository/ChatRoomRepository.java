@@ -17,6 +17,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 	// 방 생성 시 확인용
 	Optional<ChatRoom> findByProductAndBuyer(Product product, User buyer);
 
+	// 내가 참여 중인 모든 채팅방 조회
+	@Query("SELECT cp.chatRoom FROM ChatParticipant cp WHERE cp.user.id = :userId")
+	List<ChatRoom> findMyChatRooms(@Param("userId") Long userId);
+
+	List<ChatRoom> findAllByStatus(String status);
+
 	// DTO 직접 조회 (31번 쿼리 -> 1번 쿼리로 단축)
 	@Query("SELECT new com.example.yongeunmarket.dto.chat.ChatRoomListResDto(" +
 		"  c.id, " +
