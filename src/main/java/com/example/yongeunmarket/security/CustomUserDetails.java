@@ -11,8 +11,10 @@ import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.entity.UserRole;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
+@NoArgsConstructor
 public class CustomUserDetails implements UserDetails {
 
 	private Long userId;

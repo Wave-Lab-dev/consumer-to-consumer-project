@@ -1,20 +1,21 @@
-package com.example.yongeunmarket.dto.chat;
+package com.example.yongeunmarket.dto.adminChat;
 
 import java.util.List;
+
+import com.example.yongeunmarket.dto.chat.ChatRoomDetailResDto;
 
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
-public class ChatRoomDetailResDto {
+public class GetAdminChatRoomDetailResDto {
 	private Long roomId;
 	private Long productId;
-	private String productName;
 	private Long sellerId;
 	private Long buyerId;
 	private String status;
-	private List<ChatMessageDetailDto> messages;
+	private List<ChatRoomDetailResDto.ChatMessageDetailDto> messages; // 대화 내역 리스트
 
 	@Getter
 	@Builder
