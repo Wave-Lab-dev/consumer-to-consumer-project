@@ -35,4 +35,8 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 		"WHERE c.buyer.id = :userId OR c.seller.id = :userId " +
 		"ORDER BY (SELECT MAX(m.createdAt) FROM ChatMessage m WHERE m.chatRoom.id = c.id) DESC")
 	List<ChatRoomListResDto> findAllMyChatRooms(@Param("userId") Long userId);
+
+	// WebSocket 권한 검사용 (StompHandler에서 사용)
+	@Query("SELECT COUNT(c) > 0 FROM ChatRoom c WHERE c.id = :roomId AND (c.buyer.id = :userId OR c.seller.id = :userId)")
+	boolean existsByRoomIdAndUser(@Param("roomId") Long roomId, @Param("userId") Long userId);
 }
