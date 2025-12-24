@@ -28,33 +28,38 @@ public class ChatRoom extends BaseEntity {
 	private Long id;
 
 	@Column(nullable = false)
-	private String name;
+	private String roomName;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private ChatStatus status = ChatStatus.OPEN;
 
-	@Column(name = "close_at", nullable = true)
+	@Column(name = "close_at")
 	private LocalDateTime closedAt;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "buyer_id")
+	@JoinColumn(name = "product_id", nullable = false)
+	private Product product;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "seller_id", nullable = false)
+	private User seller;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "buyer_id", nullable = false)
 	private User buyer;
 
-	// @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.REMOVE) 보류
-	// private List<ChatParticipant> participants = new ArrayList<>();
-	//
-	// @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.REMOVE, orphanRemoval = true)
-	// private List<ChatMessage> messages = new ArrayList<>();
-
 	@Builder
-	public ChatRoom(String name, ChatStatus status) {
-		this.name = name;
+	public ChatRoom(String roomName, ChatStatus status, Product product, User seller, User buyer) {
+		this.roomName = roomName;
 		this.status = status;
+		this.product = product;
+		this.seller = seller;
+		this.buyer = buyer;
 	}
 
 	public void chatRoomClose() {
-		this.status = ChatStatus.CLOSED; // 상태를 '종료'로 변경
-		this.closedAt = LocalDateTime.now(); // 종료 시간 기록
+		this.status = ChatStatus.CLOSED;
+		this.closedAt = LocalDateTime.now();
 	}
 }

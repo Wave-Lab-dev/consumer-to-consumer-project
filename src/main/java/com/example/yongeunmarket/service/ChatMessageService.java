@@ -26,6 +26,7 @@ public class ChatMessageService {
 	private final ChatRoomRepository chatRoomRepository;
 	private final UserRepository userRepository;
 	private final ReadStatusRepository readStatusRepository;
+	private final RedisPublisher redisPublisher;
 
 	@Transactional
 	public ChatMessageResDto saveMessage(ChatMessageReqDto reqDto) {
@@ -54,13 +55,18 @@ public class ChatMessageService {
 		ChatMessage savedMessage = chatMessageRepository.save(message);
 
 		// 5.Dto 변환
-		return ChatMessageResDto.builder()
+		ChatMessageResDto response = ChatMessageResDto.builder()
 			.messageId(savedMessage.getId())
 			.roomId(savedMessage.getChatRoom().getId())
 			.senderId(savedMessage.getUser().getId())
 			.content(savedMessage.getContent())
 			.createdAt(savedMessage.getCreatedAt().toString())
 			.build();
+
+		// 6. Redis로 메시지 발행 (Publish)
+		redisPublisher.publish(response);
+
+		return response;
 	}
 
 	@Transactional

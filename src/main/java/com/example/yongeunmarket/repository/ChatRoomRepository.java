@@ -7,21 +7,42 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.example.yongeunmarket.dto.chat.ChatRoomListResDto;
 import com.example.yongeunmarket.entity.ChatRoom;
+import com.example.yongeunmarket.entity.Product;
 import com.example.yongeunmarket.entity.User;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
-	// "같은 상품 이름(방 이름)"을 가진 방 중에서, "해당 구매자(User)"가 참여하고 있는 방 찾기
-	@Query("SELECT cr FROM ChatRoom cr " +
-		"JOIN ChatParticipant cp ON cr.id = cp.chatRoom.id " +
-		"WHERE cr.name = :roomName AND cp.user = :buyer")
-	Optional<ChatRoom> findByNameAndBuyer(@Param("roomName") String roomName,
-		@Param("buyer") User buyer);
+	// 방 생성 시 확인용
+	Optional<ChatRoom> findByProductAndBuyer(Product product, User buyer);
 
 	// 내가 참여 중인 모든 채팅방 조회
 	@Query("SELECT cp.chatRoom FROM ChatParticipant cp WHERE cp.user.id = :userId")
 	List<ChatRoom> findMyChatRooms(@Param("userId") Long userId);
 
 	List<ChatRoom> findAllByStatus(String status);
+
+	// DTO 직접 조회 (31번 쿼리 -> 1번 쿼리로 단축)
+	@Query("SELECT new com.example.yongeunmarket.dto.chat.ChatRoomListResDto(" +
+		"  c.id, " +
+		"  c.product.id, " +
+		"  c.product.name, " +
+		"  c.buyer.id, " +
+		"  c.seller.id, " +
+		"  CAST(c.status AS string), " +
+		"  (SELECT m.content FROM ChatMessage m WHERE m.chatRoom.id = c.id ORDER BY m.createdAt DESC LIMIT 1), " +
+		"  (SELECT m.createdAt FROM ChatMessage m WHERE m.chatRoom.id = c.id ORDER BY m.createdAt DESC LIMIT 1), " +
+		"  (SELECT COUNT(m) FROM ChatMessage m WHERE m.chatRoom.id = c.id AND m.user.id != :userId " +
+		"   AND NOT EXISTS (SELECT r FROM ReadStatus r WHERE r.chatMessage.id = m.id AND r.user.id = :userId)) " +
+		") " +
+		"FROM ChatRoom c " +
+		"JOIN c.product p " +
+		"WHERE c.buyer.id = :userId OR c.seller.id = :userId " +
+		"ORDER BY (SELECT MAX(m.createdAt) FROM ChatMessage m WHERE m.chatRoom.id = c.id) DESC")
+	List<ChatRoomListResDto> findAllMyChatRooms(@Param("userId") Long userId);
+
+	// WebSocket 권한 검사용 (StompHandler에서 사용)
+	@Query("SELECT COUNT(c) > 0 FROM ChatRoom c WHERE c.id = :roomId AND (c.buyer.id = :userId OR c.seller.id = :userId)")
+	boolean existsByRoomIdAndUser(@Param("roomId") Long roomId, @Param("userId") Long userId);
 }
