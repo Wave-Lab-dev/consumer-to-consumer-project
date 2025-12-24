@@ -22,6 +22,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.example.yongeunmarket.config.SecurityConfig;
 import com.example.yongeunmarket.dto.user.VerifyPasswordReqDto;
 import com.example.yongeunmarket.jwt.JwtTokenProvider;
+import com.example.yongeunmarket.security.CustomAccessDeniedHandler;
+import com.example.yongeunmarket.security.CustomAuthenticationEntryPoint;
 import com.example.yongeunmarket.security.CustomUserDetails;
 import com.example.yongeunmarket.security.CustomUserDetailsService;
 import com.example.yongeunmarket.service.PasswordResetService;
@@ -48,6 +50,12 @@ class PasswordResetControllerTest {
 
 	@MockitoBean
 	private PasswordResetService passwordResetService;
+
+	@MockitoBean  // 추가
+	private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+	@MockitoBean
+	private CustomAccessDeniedHandler customAccessDeniedHandler;
 
 	@BeforeEach
 	void setUp() {
@@ -85,7 +93,7 @@ class PasswordResetControllerTest {
 		//given
 		VerifyPasswordReqDto reqDto = VerifyPasswordReqDto.builder()
 			.resetCode("123456")
-			.newPassword("test1234")
+			.newPassword("test1234!@")
 			.build();
 
 		Long userId = 1L;

@@ -1,5 +1,7 @@
 package com.example.yongeunmarket.service;
 
+import static com.example.yongeunmarket.exception.ErrorCode.*;
+
 import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
@@ -10,13 +12,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.yongeunmarket.entity.User;
-import com.example.yongeunmarket.exception.AccessDeniedException;
-import com.example.yongeunmarket.exception.DataProcessingException;
-import com.example.yongeunmarket.exception.upload.FileSizeExceededException;
-import com.example.yongeunmarket.exception.upload.InvalidFileException;
+import com.example.yongeunmarket.exception.BusinessException;
 import com.example.yongeunmarket.repository.UserRepository;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +45,7 @@ public class S3UploadService {
 		User user = getUserOrThrow(requestedUserId);
 
 		if (!currentUserId.equals(user.getId())) {
-			throw new AccessDeniedException("해당 user 에 권한이 없습니다");    // 로그인한 user 가 아닌경우 403
+			throw new BusinessException(ACCESS_DENIED);    // 로그인한 user 가 아닌경우 403
 		}
 
 		verifyInputFileOrThrow(multipartFile);
@@ -74,11 +72,11 @@ public class S3UploadService {
 			user.updateImageUrl(key);    //서버가 bucket 을 저장하고 있으으로, pull path 가 아닌 key 를 저장한다.
 		} catch (IOException ex) {
 			log.error("InputStream 실패 오류 {}", ex.getMessage());
-			throw new InvalidFileException("multipart file upload failed !!");
+			throw new BusinessException(INVALID_FILE_INPUT);
 		} catch (Exception ex) {
 			deleteObject(key);  //보상 트랜잭션 처리
 			log.error("DB 트랜잭션 실패 오류 {}", ex.getMessage());
-			throw new DataProcessingException("database error !!");
+			throw new BusinessException(INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -102,12 +100,12 @@ public class S3UploadService {
 
 		int lastDotIndex = filename.lastIndexOf('.');
 		if (lastDotIndex == -1) {
-			throw new InvalidFileException("확장자가 일치하지 않습니다");
+			throw new BusinessException(INVALID_FILE_INPUT);
 		}
 		String extension = filename.substring(lastDotIndex + 1);
 		if (!ALLOWED_EXTENSIONS.contains(extension)) { // 확장자가 jpg, jpeg, png 가 아닌 경우
 			log.error("확장자가 일치하지 않습니다 !{}", extension);
-			throw new InvalidFileException("확장자가 일치하지 않습니다");
+			throw new BusinessException(INVALID_FILE_INPUT);
 		}
 		return extension;
 	}
@@ -119,18 +117,18 @@ public class S3UploadService {
 	private static void verifyInputFileOrThrow(MultipartFile multipartFile) {
 		if (multipartFile.isEmpty() || multipartFile.getOriginalFilename() == null) {
 			log.error("이미지 파일이 비어있거나, 타당하지 않음!");
-			throw new InvalidFileException("이미지 파일이 비어있거나, 타당하지 않음!"); //404
+			throw new BusinessException(INVALID_FILE_INPUT); //404
 		}
 		// 파일 크기 검증
 		if (multipartFile.getSize() > MAX_FILE_SIZE) {
 			log.error("파일 크기는 10MB를 초과할 수 없습니다. (현재: {}MB)", (multipartFile.getSize() / 1024 / 1024));
-			throw new FileSizeExceededException("파일 크기는 10MB를 초과할 수 없습니다!");
+			throw new BusinessException(FILE_SIZE_EXCEEDED);
 		}
 	}
 
 	private User getUserOrThrow(Long userId) {
 
 		return userRepository.findById(userId).orElseThrow(
-			() -> new EntityNotFoundException("user 가 존재하지 않음"));
+			() -> new BusinessException(RESOURCE_NOT_FOUND));
 	}
 }

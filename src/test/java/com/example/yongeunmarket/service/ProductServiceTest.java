@@ -1,11 +1,12 @@
 package com.example.yongeunmarket.service;
 
-import com.example.yongeunmarket.dto.product.*;
-import com.example.yongeunmarket.entity.Product;
-import com.example.yongeunmarket.entity.User;
-import com.example.yongeunmarket.repository.ProductRepository;
-import com.example.yongeunmarket.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.BDDMockito.*;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -13,320 +14,321 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.*;
+import com.example.yongeunmarket.dto.product.CreateProductReqDto;
+import com.example.yongeunmarket.dto.product.CreateProductResDto;
+import com.example.yongeunmarket.dto.product.GetProductResDto;
+import com.example.yongeunmarket.dto.product.UpdateProductReqDto;
+import com.example.yongeunmarket.dto.product.UpdateProductResDto;
+import com.example.yongeunmarket.entity.Product;
+import com.example.yongeunmarket.entity.User;
+import com.example.yongeunmarket.exception.BusinessException;
+import com.example.yongeunmarket.repository.ProductRepository;
+import com.example.yongeunmarket.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
 
-    @Mock
-    private ProductRepository productRepository;
+	@Mock
+	private ProductRepository productRepository;
 
-    @Mock
-    private UserRepository userRepository;
+	@Mock
+	private UserRepository userRepository;
 
-    @InjectMocks
-    private ProductService productService;
+	@InjectMocks
+	private ProductService productService;
 
-    /**
-     * 상품 생성 단위 테스트
-     */
-    @Test
-    void givenCreateProductReq_whenCreateProduct_thenReturnCreateProductRes() {
+	/**
+	 * 상품 생성 단위 테스트
+	 */
+	@Test
+	void givenCreateProductReq_whenCreateProduct_thenReturnCreateProductRes() {
 
-        // given
-        CreateProductReqDto reqDto = CreateProductReqDto.builder()
-                .name("testName")
-                .price(BigDecimal.ONE)
-                .description("testDescription")
-                .build();
+		// given
+		CreateProductReqDto reqDto = CreateProductReqDto.builder()
+			.name("testName")
+			.price(BigDecimal.ONE)
+			.description("testDescription")
+			.build();
 
-        User user = User.builder()
-                .email("test@naver.com")
-                .password("1234")
-                .build();
-        ReflectionTestUtils.setField(user, "id", 1L);
+		User user = User.builder()
+			.email("test@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user, "id", 1L);
 
-        Product product = Product.builder()
-                .user(user)
-                .name("testName")
-                .price(BigDecimal.ONE)
-                .description("testDescription")
-                .build();
+		Product product = Product.builder()
+			.user(user)
+			.name("testName")
+			.price(BigDecimal.ONE)
+			.description("testDescription")
+			.build();
 
-        given(userRepository.findById(anyLong())).willReturn(Optional.of(user));
-        given(productRepository.save(any(Product.class))).willReturn(product);
+		given(userRepository.findById(anyLong())).willReturn(Optional.of(user));
+		given(productRepository.save(any(Product.class))).willReturn(product);
 
-        // when
-        CreateProductResDto resDto = productService.createProduct(reqDto, user.getId());
+		// when
+		CreateProductResDto resDto = productService.createProduct(reqDto, user.getId());
 
-        //then
-        verify(productRepository).save(any(Product.class));    // productRepository 의존성 사용
-        assertThat(resDto.getUserId()).isEqualTo(user.getId());
-        assertThat(resDto.getName()).isEqualTo(reqDto.getName());
-        assertThat(resDto.getPrice()).isEqualTo(reqDto.getPrice());
-        assertThat(resDto.getDescription()).isEqualTo(reqDto.getDescription());
-    }
+		//then
+		verify(productRepository).save(any(Product.class));    // productRepository 의존성 사용
+		assertThat(resDto.getUserId()).isEqualTo(user.getId());
+		assertThat(resDto.getName()).isEqualTo(reqDto.getName());
+		assertThat(resDto.getPrice()).isEqualTo(reqDto.getPrice());
+		assertThat(resDto.getDescription()).isEqualTo(reqDto.getDescription());
+	}
 
-    /**
-     * 상품 생성 단위 테스트
-     * - 해당 user 를 찾을수 없는 경우
-     */
-    @Test
-    void givenNotExistUser_whenCreateProduct_thenNotFound() {
+	/**
+	 * 상품 생성 단위 테스트
+	 * - 해당 user 를 찾을수 없는 경우
+	 */
+	@Test
+	void givenNotExistUser_whenCreateProduct_thenThrowBusinessException() {
 
-        // given
-        CreateProductReqDto reqDto = CreateProductReqDto.builder()
-                .name("testName")
-                .price(BigDecimal.ONE)
-                .description("testDescription")
-                .build();
+		// given
+		CreateProductReqDto reqDto = CreateProductReqDto.builder()
+			.name("testName")
+			.price(BigDecimal.ONE)
+			.description("testDescription")
+			.build();
 
-        User user = User.builder()
-                .email("test@naver.com")
-                .password("1234")
-                .build();
-        long notExistUserId = 999L;
+		User user = User.builder()
+			.email("test@naver.com")
+			.password("1234")
+			.build();
+		long notExistUserId = 999L;
 
-        given(userRepository.findById(eq(notExistUserId)))
-                .willReturn(Optional.empty());
+		given(userRepository.findById(eq(notExistUserId)))
+			.willReturn(Optional.empty());
 
-        // when & then
-        assertThatThrownBy(() -> productService.createProduct(reqDto, notExistUserId))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("user 가 존재하지 않음");
-    }
+		// when & then
+		assertThatThrownBy(() -> productService.createProduct(reqDto, notExistUserId))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("입력값을 찾을 수 없습니다.");
+	}
 
-    /**
-     * 상품 전체 조회 단위 테스트
-     */
-    @Test
-    void givenProducts_whenFindAll_thenReturnGetProductResList() {
+	/**
+	 * 상품 전체 조회 단위 테스트
+	 */
+	@Test
+	void givenProducts_whenFindAll_thenReturnGetProductResList() {
 
-        // given
-        User user1 = User.builder()
-                .email("test1@naver.com")
-                .password("1234")
-                .build();
-        ReflectionTestUtils.setField(user1, "id", 1L);
-        Product product1 = Product.builder()
-                .user(user1)
-                .name("test1Name")
-                .price(BigDecimal.valueOf(10000))
-                .description("test1")
-                .build();
+		// given
+		User user1 = User.builder()
+			.email("test1@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user1, "id", 1L);
+		Product product1 = Product.builder()
+			.user(user1)
+			.name("test1Name")
+			.price(BigDecimal.valueOf(10000))
+			.description("test1")
+			.build();
 
-        User user2 = User.builder()
-                .email("test2@naver.com")
-                .password("1234")
-                .build();
-        ReflectionTestUtils.setField(user1, "id", 2L);
-        Product product2 = Product.builder()
-                .user(user2)
-                .name("testName")
-                .price(BigDecimal.valueOf(20000))
-                .description("test2")
-                .build();
+		User user2 = User.builder()
+			.email("test2@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user1, "id", 2L);
+		Product product2 = Product.builder()
+			.user(user2)
+			.name("testName")
+			.price(BigDecimal.valueOf(20000))
+			.description("test2")
+			.build();
 
-        given(productRepository.findAll()).willReturn(List.of(product1, product2));
+		given(productRepository.findAll()).willReturn(List.of(product1, product2));
 
-        // when
-        List<GetProductResDto> resDtos = productService.findAll();
+		// when
+		List<GetProductResDto> resDtos = productService.findAll();
 
-        //then
-        verify(productRepository).findAll();    // productRepository 의존성 사용
-        assertThat(resDtos).hasSize(2);
-        assertThat(resDtos.get(0).getName()).isEqualTo(product1.getName());
-        assertThat(resDtos.get(0).getPrice()).isEqualTo(product1.getPrice());
-        assertThat(resDtos.get(0).getDescription()).isEqualTo(product1.getDescription());
+		//then
+		verify(productRepository).findAll();    // productRepository 의존성 사용
+		assertThat(resDtos).hasSize(2);
+		assertThat(resDtos.get(0).getName()).isEqualTo(product1.getName());
+		assertThat(resDtos.get(0).getPrice()).isEqualTo(product1.getPrice());
+		assertThat(resDtos.get(0).getDescription()).isEqualTo(product1.getDescription());
 
-        assertThat(resDtos.get(1).getName()).isEqualTo(product2.getName());
-        assertThat(resDtos.get(1).getPrice()).isEqualTo(product2.getPrice());
-        assertThat(resDtos.get(1).getDescription()).isEqualTo(product2.getDescription());
-    }
+		assertThat(resDtos.get(1).getName()).isEqualTo(product2.getName());
+		assertThat(resDtos.get(1).getPrice()).isEqualTo(product2.getPrice());
+		assertThat(resDtos.get(1).getDescription()).isEqualTo(product2.getDescription());
+	}
 
-    /**
-     * 상품 단건 조회 단위 테스트
-     */
-    @Test
-    void givenProduct_whenFindById_thenReturnGetProductRes() {
+	/**
+	 * 상품 단건 조회 단위 테스트
+	 */
+	@Test
+	void givenProduct_whenFindById_thenReturnGetProductRes() {
 
-        // given
-        User user = User.builder()
-                .email("test@naver.com")
-                .password("1234")
-                .build();
-        ReflectionTestUtils.setField(user, "id", 1L);
+		// given
+		User user = User.builder()
+			.email("test@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user, "id", 1L);
 
-        Product product = Product.builder()
-                .user(user)
-                .name("testName")
-                .price(BigDecimal.valueOf(10000))
-                .description("testDescription")
-                .build();
-        ReflectionTestUtils.setField(product, "id", 1L);
+		Product product = Product.builder()
+			.user(user)
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
+		ReflectionTestUtils.setField(product, "id", 1L);
 
-        given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
-        //when
-        GetProductResDto resDto = productService.findById(product.getId());
+		given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
+		//when
+		GetProductResDto resDto = productService.findById(product.getId());
 
-        //then
-        verify(productRepository).findById(anyLong());    // productRepository 의존성 사용
+		//then
+		verify(productRepository).findById(anyLong());    // productRepository 의존성 사용
 
-        assertThat(resDto.getName()).isEqualTo(product.getName());
-        assertThat(resDto.getPrice()).isEqualTo(product.getPrice());
-        assertThat(resDto.getDescription()).isEqualTo(product.getDescription());
+		assertThat(resDto.getName()).isEqualTo(product.getName());
+		assertThat(resDto.getPrice()).isEqualTo(product.getPrice());
+		assertThat(resDto.getDescription()).isEqualTo(product.getDescription());
 
-    }
+	}
 
-    /**
-     * 상품 단건 조회 단위 테스트
-     * - 존재하지 않는 productId 조회 시
-     */
-    @Test
-    void givenNotExistProduct_whenFindById_thenNotFound() {
+	/**
+	 * 상품 단건 조회 단위 테스트
+	 * - 존재하지 않는 productId 조회 시
+	 */
+	@Test
+	void givenNotExistProduct_whenFindById_thenThrowBusinessException() {
 
-        // given
-        long notExistProductId = 999L;
-        given(productRepository.findById(eq(notExistProductId)))
-                .willReturn(Optional.empty());
+		// given
+		long notExistProductId = 999L;
+		given(productRepository.findById(eq(notExistProductId)))
+			.willReturn(Optional.empty());
 
-        // when & then
-        assertThatThrownBy(() -> productService.findById(notExistProductId))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("product 가 존재하지 않음");
-    }
+		// when & then
+		assertThatThrownBy(() -> productService.findById(notExistProductId))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("입력값을 찾을 수 없습니다.");
+	}
 
-    /**
-     * 상품 업데이트 단위 테스트
-     */
-    @Test
-    void givenUpdateProductReq_whenFindAll_thenReturnUpdateProductRes() {
+	/**
+	 * 상품 업데이트 단위 테스트
+	 */
+	@Test
+	void givenUpdateProductReq_whenFindAll_thenReturnUpdateProductRes() {
 
-        UpdateProductReqDto reqDto = UpdateProductReqDto.builder()
-                .name("testName")
-                .price(BigDecimal.valueOf(10000))
-                .description("testDescription")
-                .build();
+		UpdateProductReqDto reqDto = UpdateProductReqDto.builder()
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
 
-        User user = User.builder()
-                .email("test@naver.com")
-                .password("1234")
-                .build();
-        ReflectionTestUtils.setField(user, "id", 1L);
+		User user = User.builder()
+			.email("test@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user, "id", 1L);
 
-        Product product = Product.builder()
-                .user(user)
-                .name("testName")
-                .price(BigDecimal.valueOf(10000))
-                .description("testDescription")
-                .build();
-        ReflectionTestUtils.setField(product, "id", 1L);
+		Product product = Product.builder()
+			.user(user)
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
+		ReflectionTestUtils.setField(product, "id", 1L);
 
-        given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
+		given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
 
-        // when
-        UpdateProductResDto resDto = productService.updateProduct(reqDto, product.getId(), user.getId());
+		// when
+		UpdateProductResDto resDto = productService.updateProduct(reqDto, product.getId(), user.getId());
 
-        //then
-        verify(productRepository).findById(anyLong());    // productRepository 의존성 사용
-        assertThat(resDto.getUserId()).isEqualTo(user.getId());
-        assertThat(resDto.getName()).isEqualTo(reqDto.getName());
-        assertThat(resDto.getPrice()).isEqualTo(reqDto.getPrice());
-        assertThat(resDto.getDescription()).isEqualTo(reqDto.getDescription());
-    }
+		//then
+		verify(productRepository).findById(anyLong());    // productRepository 의존성 사용
+		assertThat(resDto.getUserId()).isEqualTo(user.getId());
+		assertThat(resDto.getName()).isEqualTo(reqDto.getName());
+		assertThat(resDto.getPrice()).isEqualTo(reqDto.getPrice());
+		assertThat(resDto.getDescription()).isEqualTo(reqDto.getDescription());
+	}
 
-    @Test
-    void givenNotOwnedProduct_whenFindAll_thenReturnForbidden() {
-        UpdateProductReqDto reqDto = UpdateProductReqDto.builder()
-                .name("testName")
-                .price(BigDecimal.valueOf(10000))
-                .description("testDescription")
-                .build();
+	@Test
+	void givenNotOwnedProduct_whenFindAll_thenThrowBusinessException() {
+		UpdateProductReqDto reqDto = UpdateProductReqDto.builder()
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
 
-        User user = User.builder()
-                .email("test@naver.com")
-                .password("1234")
-                .build();
-        ReflectionTestUtils.setField(user, "id", 1L);
+		User user = User.builder()
+			.email("test@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user, "id", 1L);
 
-        Product product = Product.builder()
-                .user(user)
-                .name("testName")
-                .price(BigDecimal.valueOf(10000))
-                .description("testDescription")
-                .build();
-        ReflectionTestUtils.setField(product, "id", 1L);
+		Product product = Product.builder()
+			.user(user)
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
+		ReflectionTestUtils.setField(product, "id", 1L);
 
+		given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
+		// when & then
+		assertThatThrownBy(() -> productService.updateProduct(reqDto, product.getId(), 2L)) //상품의 주인이 아닌경우
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("해당 user 에 권한이 없습니다");
+	}
 
-        given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
-        // when & then
-        assertThatThrownBy(() -> productService.updateProduct(reqDto, product.getId(), 2L)) //상품의 주인이 아닌경우
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("해당 user 에 권한이 없습니다");
-    }
+	/**
+	 * 상품 삭제 단위 테스트
+	 */
+	@Test
+	void givenProduct_whenDeleteProduct_thenDeleteProduct() {
+		// given
+		User user = User.builder()
+			.email("test@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user, "id", 1L);
 
-    /**
-     * 상품 삭제 단위 테스트
-     */
-    @Test
-    void givenProduct_whenDeleteProduct_thenDeleteProduct() {
-        // given
-        User user = User.builder()
-                .email("test@naver.com")
-                .password("1234")
-                .build();
-        ReflectionTestUtils.setField(user, "id", 1L);
+		Product product = Product.builder()
+			.user(user)
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
+		ReflectionTestUtils.setField(product, "id", 1L);
 
-        Product product = Product.builder()
-                .user(user)
-                .name("testName")
-                .price(BigDecimal.valueOf(10000))
-                .description("testDescription")
-                .build();
-        ReflectionTestUtils.setField(product, "id", 1L);
+		given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
+		// when
+		productService.deleteProduct(product.getId(), user.getId());
 
-        given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
-        // when
-        productService.deleteProduct(product.getId(), user.getId());
+		// then
+		verify(productRepository).findById(anyLong());
+		verify(productRepository).delete(product);
+	}
 
-        // then
-        verify(productRepository).findById(anyLong());
-        verify(productRepository).delete(product);
-    }
+	/**
+	 * 상품 삭제 단위테스트
+	 * - product 의 주인이 아닌경우, product 를 삭제 시도할 경우
+	 */
+	@Test
+	void givenNotOwnedProduct_whenDeleteProduct_thenThrowBusinessException() {
+		// given
+		User user = User.builder()
+			.email("test@naver.com")
+			.password("1234")
+			.build();
+		ReflectionTestUtils.setField(user, "id", 1L);
 
-    /**
-     * 상품 삭제 단위테스트
-     * - product 의 주인이 아닌경우, product 를 삭제 시도할 경우
-     */
-    @Test
-    void givenNotOwnedProduct_whenDeleteProduct_thenReturnForbidden() {
-        // given
-        User user = User.builder()
-                .email("test@naver.com")
-                .password("1234")
-                .build();
-        ReflectionTestUtils.setField(user, "id", 1L);
+		Product product = Product.builder()
+			.user(user)
+			.name("testName")
+			.price(BigDecimal.valueOf(10000))
+			.description("testDescription")
+			.build();
+		ReflectionTestUtils.setField(product, "id", 1L);
 
-        Product product = Product.builder()
-                .user(user)
-                .name("testName")
-                .price(BigDecimal.valueOf(10000))
-                .description("testDescription")
-                .build();
-        ReflectionTestUtils.setField(product, "id", 1L);
-
-        given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
-        // when & then
-        assertThatThrownBy(() -> productService.deleteProduct(product.getId(), 2L)) //상품의 주인이 아닌경우
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("해당 user 에 권한이 없습니다");
-    }
-
+		given(productRepository.findById(anyLong())).willReturn(Optional.of(product));
+		// when & then
+		assertThatThrownBy(() -> productService.deleteProduct(product.getId(), 2L)) //상품의 주인이 아닌경우
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("해당 user 에 권한이 없습니다");
+	}
 
 }

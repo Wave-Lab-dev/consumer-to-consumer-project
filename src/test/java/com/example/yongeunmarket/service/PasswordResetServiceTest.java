@@ -25,14 +25,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.example.yongeunmarket.dto.user.VerifyPasswordReqDto;
 import com.example.yongeunmarket.entity.User;
-import com.example.yongeunmarket.exception.user.AttemptExpiredException;
-import com.example.yongeunmarket.exception.user.EmailSendFailedException;
-import com.example.yongeunmarket.exception.user.ResetCodeExpiredException;
-import com.example.yongeunmarket.exception.user.ResetCodeMismatchException;
-import com.example.yongeunmarket.exception.user.TooManyAttemptsException;
+import com.example.yongeunmarket.exception.BusinessException;
 import com.example.yongeunmarket.repository.UserRepository;
-
-import jakarta.persistence.EntityNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class PasswordResetServiceTest {
@@ -141,14 +135,14 @@ class PasswordResetServiceTest {
 
 		@Test
 		@DisplayName("실패: 존재하지 않는 사용자")
-		void givenNonExistingUser_whenSendResetCode_thenThrowEntityNotFoundException() {
+		void givenNonExistingUser_whenSendResetCode_thenThrowBusinessException() {
 			// given
 			when(userRepository.findById(INVALID_USER_ID)).thenReturn(Optional.empty());
 
 			// when & then
 			assertThatThrownBy(() -> passwordResetService.sendResetCode(INVALID_USER_ID))
-				.isInstanceOf(EntityNotFoundException.class)
-				.hasMessage("user 가 존재하지 않음");
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("입력값을 찾을 수 없습니다.");
 
 			verify(mailSender, never()).send(any(SimpleMailMessage.class));
 			verify(valueOperations, never()).set(anyString(), any(), anyLong(), any(TimeUnit.class));
@@ -156,7 +150,7 @@ class PasswordResetServiceTest {
 
 		@Test
 		@DisplayName("실패: 이메일 발송 실패")
-		void givenMailSendFailure_whenSendResetCode_thenThrowIllegalStateException() {
+		void givenMailSendFailure_whenSendResetCode_thenThrowBusinessException() {
 			// given
 			User user = User.builder()
 				.email("test@naver.com")
@@ -169,7 +163,7 @@ class PasswordResetServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> passwordResetService.sendResetCode(USER_ID))
-				.isInstanceOf(EmailSendFailedException.class)
+				.isInstanceOf(BusinessException.class)
 				.hasMessage("이메일 전송에 실패 했습니다 !");
 
 			verify(valueOperations, never()).set(anyString(), any(), anyLong(), any(TimeUnit.class));
@@ -227,7 +221,7 @@ class PasswordResetServiceTest {
 
 		@Test
 		@DisplayName("실패: 존재하지 않는 사용자")
-		void givenNonExistingUser_whenResetPassword_thenThrowEntityNotFoundException() {
+		void givenNonExistingUser_whenResetPassword_thenThrowBusinessException() {
 			// given
 			Long userId = 999L;
 			VerifyPasswordReqDto dto = VerifyPasswordReqDto.builder()
@@ -239,8 +233,8 @@ class PasswordResetServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> passwordResetService.resetPassword(dto, userId))
-				.isInstanceOf(EntityNotFoundException.class)
-				.hasMessage("user 가 존재하지 않음");
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("입력값을 찾을 수 없습니다.");
 
 			verify(valueOperations, never()).get(anyString());
 			verify(redisTemplate, never()).delete(anyString());
@@ -248,7 +242,7 @@ class PasswordResetServiceTest {
 
 		@Test
 		@DisplayName("실패: 최대 시도 횟수 초과 (5번 이상)")
-		void givenTooManyAttempts_whenResetPassword_thenThrowTooManyAttemptsException() {
+		void givenTooManyAttempts_whenResetPassword_thenThrowBusinessException() {
 			// given
 			User user = User.builder()
 				.email("test@naver.com")
@@ -265,9 +259,8 @@ class PasswordResetServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> passwordResetService.resetPassword(dto, USER_ID))
-				.isInstanceOf(TooManyAttemptsException.class)
-				.hasMessageContaining("재설정 코드 입력 횟수를 초과했습니다")
-				.hasMessageContaining(EXPIRY_MINUTES + "분 후에 다시 시도해주세요");
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("재설정 코드 입력 횟수를 초과했습니다.");
 
 			verify(valueOperations, never()).get(resetCodeKey);
 			verify(redisTemplate, never()).delete(anyString());
@@ -275,7 +268,7 @@ class PasswordResetServiceTest {
 
 		@Test
 		@DisplayName("실패: attempt 정보 만료")
-		void givenExpiredAttempt_whenResetPassword_thenThrowAttemptExpiredException() {
+		void givenExpiredAttempt_whenResetPassword_thenThrowBusinessException() {
 			// given
 			User user = User.builder()
 				.email("test@naver.com")
@@ -292,7 +285,7 @@ class PasswordResetServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> passwordResetService.resetPassword(dto, USER_ID))
-				.isInstanceOf(AttemptExpiredException.class)
+				.isInstanceOf(BusinessException.class)
 				.hasMessage("재설정 코드 유효 시간이 만료되었습니다. 코드를 다시 발급받아 주세요.");
 
 			verify(valueOperations, never()).get(resetCodeKey);
@@ -300,8 +293,9 @@ class PasswordResetServiceTest {
 		}
 
 		@Test
-		@DisplayName("실패: Redis에 코드가 없음 (만료 또는 미존재)")	// 410 case
-		void givenExpiredOrMissingCode_whenResetPassword_thenThrowIllegalStateException() {
+		@DisplayName("실패: Redis에 코드가 없음 (만료 또는 미존재)")
+			// 410 case
+		void givenExpiredOrMissingCode_whenResetPassword_thenThrowBusinessException() {
 			// given
 			User user = User.builder()
 				.email("test@naver.com")
@@ -320,15 +314,16 @@ class PasswordResetServiceTest {
 
 			// when & then
 			assertThatThrownBy(() -> passwordResetService.resetPassword(reqDto, USER_ID))
-				.isInstanceOf(ResetCodeExpiredException.class)
+				.isInstanceOf(BusinessException.class)
 				.hasMessage("재설정 코드가 만료되었거나, 존재하지 않습니다");
 
 			verify(redisTemplate, never()).delete(anyString());
 		}
 
 		@Test
-		@DisplayName("실패: 코드 불일치")	// 404 case
-		void givenMismatchedResetCode_whenResetPassword_thenThrowIllegalStateException() {
+		@DisplayName("실패: 코드 불일치")
+			// 404 case
+		void givenMismatchedResetCode_whenResetPassword_thenThrowBusinessException() {
 			// given
 			String redisKey = REDIS_CODE_PREFIX + USER_ID;
 
@@ -349,7 +344,7 @@ class PasswordResetServiceTest {
 			// when & then
 			assertThatThrownBy(() -> passwordResetService.resetPassword(reqDto, USER_ID))
 				.isInstanceOf(
-					ResetCodeMismatchException.class)
+					BusinessException.class)
 				.hasMessage("재설정 코드가 일치하지 않습니다");
 
 			verify(redisTemplate, never()).delete(anyString());
