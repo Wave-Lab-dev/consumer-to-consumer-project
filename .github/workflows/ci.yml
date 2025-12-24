@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - develop
+      - dev
   pull_request:
     branches:
       - main
@@ -54,3 +54,16 @@ jobs:
             ${{ env.DOCKER_IMAGE_NAME }}:latest
           cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:latest
           cache-to: type=inline
+          build-args: |
+            SPRING_DATASOURCE_URL=${{secrets.SPRING_DATASOURCE_URL}}
+            SPRING_DATASOURCE_USERNAME=${{secrets.SPRING_DATASOURCE_USERNAME}}
+            SPRING_DATASOURCE_PASSWORD=${{secrets.SPRING_DATASOURCE_PASSWORD}}
+            AWS_S3_BUCKET=${{secrets.AWS_S3_BUCKET}}
+            AWS_REGION=${{secrets.AWS_REGION}}
+            AWS_ACCESS_KEY=${{secrets.AWS_ACCESS_KEY}}
+            AWS_SECRET_KEY=${{secrets.AWS_SECRET_KEY}}
+            JWT_SECRET=${{secrets.JWT_SECRET}}
+            JWT_TOKEN_VALIDITY_IN_SECONDS=${{secrets.JWT_TOKEN_VALIDITY_IN_SECONDS}}
+            SMTP_DOMAIN=${{secrets.SMTP_DOMAIN}}
+            SENDER_EMAIL=${{secrets.SENDER_EMAIL}}
+            SENDER_PASSWORD=${{secrets.SENDER_PASSWORD}}
