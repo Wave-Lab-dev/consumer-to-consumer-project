@@ -1,5 +1,7 @@
 package com.example.yongeunmarket.service;
 
+import static com.example.yongeunmarket.exception.ErrorCode.*;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,10 +15,10 @@ import com.example.yongeunmarket.dto.product.UpdateProductReqDto;
 import com.example.yongeunmarket.dto.product.UpdateProductResDto;
 import com.example.yongeunmarket.entity.Product;
 import com.example.yongeunmarket.entity.User;
+import com.example.yongeunmarket.exception.BusinessException;
 import com.example.yongeunmarket.repository.ProductRepository;
 import com.example.yongeunmarket.repository.UserRepository;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -87,7 +89,7 @@ public class ProductService {
 		Product product = getProductOrThrow(productId);
 		// 상품이 현재 로그인한 user 가 만든 product 인지 검증
 		if (!userId.equals(product.getUser().getId())) {
-			throw new IllegalStateException("해당 user 에 권한이 없습니다");    //403
+			throw new BusinessException(ACCESS_DENIED);    //403
 		}
 
 		product.updateProduct(
@@ -112,7 +114,7 @@ public class ProductService {
 		Product product = getProductOrThrow(productId);
 		// 상품이 현재 로그인한 user 가 만든 product 인지 검증
 		if (!userId.equals(product.getUser().getId())) {
-			throw new IllegalStateException("해당 user 에 권한이 없습니다");    //403
+			throw new BusinessException(ACCESS_DENIED);
 		}
 
 		productRepository.delete(product);
@@ -120,12 +122,12 @@ public class ProductService {
 
 	private User getUserOrThrow(Long userId) {
 		return userRepository.findById(userId).orElseThrow(
-			() -> new EntityNotFoundException("user 가 존재하지 않음"));
+			() -> new BusinessException(RESOURCE_NOT_FOUND));
 	}
 
 	private Product getProductOrThrow(Long productId) {
 		return productRepository.findById(productId).orElseThrow(
-			() -> new EntityNotFoundException("product 가 존재하지 않음"));
+			() -> new BusinessException(RESOURCE_NOT_FOUND));
 	}
 
 }

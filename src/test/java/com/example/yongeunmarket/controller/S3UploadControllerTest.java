@@ -23,6 +23,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.yongeunmarket.config.SecurityConfig;
 import com.example.yongeunmarket.jwt.JwtTokenProvider;
+import com.example.yongeunmarket.security.CustomAccessDeniedHandler;
+import com.example.yongeunmarket.security.CustomAuthenticationEntryPoint;
 import com.example.yongeunmarket.security.CustomUserDetails;
 import com.example.yongeunmarket.security.CustomUserDetailsService;
 import com.example.yongeunmarket.service.S3UploadService;
@@ -45,6 +47,12 @@ class S3UploadControllerTest {
 
 	@MockitoBean
 	private S3UploadService s3UploadService;
+
+	@MockitoBean  // 추가
+	private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+	@MockitoBean
+	private CustomAccessDeniedHandler customAccessDeniedHandler;
 
 	@BeforeEach
 	void setUp() {

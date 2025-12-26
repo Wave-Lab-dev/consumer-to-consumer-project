@@ -1,5 +1,7 @@
 package com.example.yongeunmarket.service;
 
+import static com.example.yongeunmarket.exception.ErrorCode.*;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -15,15 +17,9 @@ import org.springframework.stereotype.Service;
 
 import com.example.yongeunmarket.dto.user.VerifyPasswordReqDto;
 import com.example.yongeunmarket.entity.User;
-import com.example.yongeunmarket.exception.DataProcessingException;
-import com.example.yongeunmarket.exception.user.AttemptExpiredException;
-import com.example.yongeunmarket.exception.user.EmailSendFailedException;
-import com.example.yongeunmarket.exception.user.ResetCodeExpiredException;
-import com.example.yongeunmarket.exception.user.ResetCodeMismatchException;
-import com.example.yongeunmarket.exception.user.TooManyAttemptsException;
+import com.example.yongeunmarket.exception.BusinessException;
 import com.example.yongeunmarket.repository.UserRepository;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +40,7 @@ public class PasswordResetService {
 
 	private static final int MAX_ATTEMPTS = 5; // 최대 시도 횟수
 	private static final int RESET_CODE_LENGTH = 6;// 재설정 코드 길이
-	public static final String INIT_ATTEMPT = "1";
+	public static final String INIT_ATTEMPT = "0";
 
 	public static final String CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
 
@@ -73,7 +69,7 @@ public class PasswordResetService {
 			cacheWithTTL(attemptKey, INIT_ATTEMPT);
 		} catch (MailException exception) {
 			log.error("이메일 전송에 실패 했습니다 {}", exception.getMessage());
-			throw new EmailSendFailedException("이메일 전송에 실패 했습니다 !");
+			throw new BusinessException(EMAIL_SEND_FAILED);
 		}
 	}
 
@@ -92,7 +88,7 @@ public class PasswordResetService {
 			user.updatePassword(passwordEncoder.encode(newPassword));
 		} catch (Exception ex) {
 			log.error("DB 트랜잭션 실패 오류 , 재설정 코드를 다시 발급받아 주세요. {}", ex.getMessage());
-			throw new DataProcessingException("DB 트랜잭션 실패 오류");
+			throw new BusinessException(INTERNAL_SERVER_ERROR);
 		} finally {
 			redisTemplate.delete(resetCodeKey);
 			redisTemplate.delete(attemptKey);
@@ -115,7 +111,7 @@ public class PasswordResetService {
 		String serverResetCode = redisTemplate.opsForValue().get(resetCodeKey);
 
 		if (serverResetCode == null) { //만료 혹은 진짜 없음 410
-			throw new ResetCodeExpiredException("재설정 코드가 만료되었거나, 존재하지 않습니다");
+			throw new BusinessException(RESET_CODE_EXPIRED);
 		}
 		//key 는 있는데 재설정 코드가 서로 다르다 404
 		if (!MessageDigest.isEqual(
@@ -123,7 +119,8 @@ public class PasswordResetService {
 			serverResetCode.getBytes(StandardCharsets.UTF_8)
 		)) {
 			cacheWithTTL(attemptKey, String.valueOf(attempts + 1));
-			throw new ResetCodeMismatchException("재설정 코드가 일치하지 않습니다");
+			log.error("재시도 코드가 일치하지 않습니다 (현재 시도횟수: {})",attempts+1);
+			throw new BusinessException(RESET_CODE_MISMATCH);
 		}
 	}
 
@@ -136,18 +133,14 @@ public class PasswordResetService {
 		String attemptsStr = redisTemplate.opsForValue().get(attemptKey);
 		if (attemptsStr == null) {
 			log.error("시도 횟수 정보 만료: attemptKey={}", attemptKey);
-			throw new AttemptExpiredException(
-				"재설정 코드 유효 시간이 만료되었습니다. 코드를 다시 발급받아 주세요."
-			);
+			throw new BusinessException(ATTEMPT_EXPIRED);
 		}
 
 		int attempts = Integer.parseInt(attemptsStr);
 
 		if (attempts >= MAX_ATTEMPTS) { //시도 횟수 >= 시도 허용횟수
-			throw new TooManyAttemptsException(
-				String.format("재설정 코드 입력 횟수를 초과했습니다. %d분 후에 다시 시도해주세요.",
-					expiryMinutes)
-			);
+			log.error("재설정 코드 입력 횟수를 초과 했습니다. {} 분후에 다시 시도해주세요",  expiryMinutes);
+			throw new BusinessException(TOO_MANY_ATTEMPTS);
 		}
 		return attempts;
 	}
@@ -155,7 +148,7 @@ public class PasswordResetService {
 	private User getUserOrThrow(Long userId) {
 
 		return userRepository.findById(userId).orElseThrow(
-			() -> new EntityNotFoundException("user 가 존재하지 않음"));
+			() -> new BusinessException(RESOURCE_NOT_FOUND));
 	}
 
 	/**

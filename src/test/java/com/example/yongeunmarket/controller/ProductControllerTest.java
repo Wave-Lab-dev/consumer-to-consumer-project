@@ -31,6 +31,8 @@ import com.example.yongeunmarket.dto.product.UpdateProductResDto;
 import com.example.yongeunmarket.entity.Product;
 import com.example.yongeunmarket.entity.User;
 import com.example.yongeunmarket.jwt.JwtTokenProvider;
+import com.example.yongeunmarket.security.CustomAccessDeniedHandler;
+import com.example.yongeunmarket.security.CustomAuthenticationEntryPoint;
 import com.example.yongeunmarket.security.CustomUserDetails;
 import com.example.yongeunmarket.security.CustomUserDetailsService;
 import com.example.yongeunmarket.service.ProductService;
@@ -57,6 +59,12 @@ class ProductControllerTest {
 
 	@MockitoBean
 	private ProductService productService;
+
+	@MockitoBean  // 추가
+	private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+	@MockitoBean
+	private CustomAccessDeniedHandler customAccessDeniedHandler;
 
 	@BeforeEach
 	void setUp() {

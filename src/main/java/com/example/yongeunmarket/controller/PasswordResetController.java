@@ -12,6 +12,7 @@ import com.example.yongeunmarket.dto.user.VerifyPasswordReqDto;
 import com.example.yongeunmarket.security.CustomUserDetails;
 import com.example.yongeunmarket.service.PasswordResetService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -32,7 +33,7 @@ public class PasswordResetController {
 
 	@PostMapping("/reset-password")
 	public ResponseEntity<Void> resetPassword(
-		@RequestBody VerifyPasswordReqDto verifyPasswordReqDto,
+		@RequestBody @Valid VerifyPasswordReqDto verifyPasswordReqDto,
 		@AuthenticationPrincipal CustomUserDetails customUserDetails
 	) {
 		Long userId = customUserDetails.getUserId();
